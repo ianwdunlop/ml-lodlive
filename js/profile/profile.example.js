@@ -40,7 +40,8 @@ ExampleProfile.default = {
     document : 'SELECT DISTINCT * WHERE {<{URI}> ?property ?object}',
     bnode : 'SELECT DISTINCT *  WHERE {<{URI}> ?property ?object}',
     inverse : 'SELECT DISTINCT * WHERE {?object ?property <{URI}>.} LIMIT 100',
-    inverseSameAs : 'SELECT DISTINCT * WHERE {{?object <http://www.w3.org/2002/07/owl#sameAs> <{URI}> } UNION { ?object <http://www.w3.org/2004/02/skos/core#exactMatch> <{URI}>}}'
+    inverseSameAs : 'SELECT DISTINCT * WHERE {{?object <http://www.w3.org/2002/07/owl#sameAs> <{URI}> } UNION { ?object <http://www.w3.org/2004/02/skos/core#exactMatch> <{URI}>}}',
+    label: 'PREFIX skos: <http://www.w3.org/2004/02/skos/core#> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT DISTINCT ?label WHERE { VALUES ?label_prop { rdfs:label skos:prefLabel } <{URI}> ?label_prop ?label . }'
   },
   endpoint : 'http://labs.regesta.com/resourceProxy/',
   document : {
