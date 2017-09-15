@@ -40,6 +40,7 @@
     */
   function LodLive(container,options) {
     var profile = this.options = options;
+    this.uriToLabels = {};
     this.debugOn = options.debugOn && window.console; // don't debug if there is no console
 
     // allow them to override the docInfo function
@@ -237,7 +238,14 @@
     }
 
     if (!isInverse) {
-      inst.renderer.drawLine(originalCircle, newObj, null, propertyName);
+      var allAjaxCalls = [];
+      propertyName.split('|').forEach(function(property) {
+        var labelKey = property.trim();
+        allAjaxCalls.push(inst.generateLabelAjaxCall(labelKey));
+      });
+      Promise.all(allAjaxCalls).then(values => {
+        inst.renderer.drawLine(originalCircle, newObj, null, propertyName, inst.uriToLabels);
+      });
     }
   };
 
@@ -808,7 +816,8 @@
 
     // iterate over connectedDocs and invertedDocs, creating DOM nodes and calculating CSS positioning
     var connectedNodes = inst.renderer.createPropertyBoxes(connectedDocs, propertyGroup, containerBox, chordsList, chordsListGrouped, false);
-    var invertedNodes = inst.renderer.createPropertyBoxes(invertedDocs, propertyGroupInverted, containerBox, chordsList, chordsListGrouped, true);
+    // Need to start inverted nodes at end of connectedNodes
+    var invertedNodes = inst.renderer.createPropertyBoxes(invertedDocs, propertyGroupInverted, containerBox, chordsList, chordsListGrouped, true, connectedNodes.objectList.length + 1);
 
     // aggiungo al box i link ai documenti correlati
     var objectList = connectedNodes.objectList.concat(invertedNodes.objectList);
@@ -957,6 +966,35 @@
       console.debug((new Date().getTime() - start) + '  findInverseSameAs');
     }
   };
+
+  // Try to get a label for a URI
+  LodLive.prototype.generateLabelAjaxCall = function(uri) {
+    var me = this;
+    // We might already have the label or at least tried to get it
+    if (me.uriToLabels[uri] != null ) {
+      var promise = new Promise(function(resolve, reject) {
+        resolve(uri);
+      });
+      return promise;
+    } else {
+      var SPARQLQuery = me.options.connection['http:'].endpoint + '?query=' + encodeURIComponent(me.options.default.sparql.label.replace('{URI}', uri));
+      var aCall = $.get({
+        contentType: 'application/json',
+        dataType: 'json',
+        url: SPARQLQuery
+      }).done(function(data) {
+        var result = data['results']['bindings'];
+        if (result != null && result.length > 0 && result[0].label != null) {
+          // We have an actual label
+          me.uriToLabels[uri] = result[0].label.value;
+        } else {
+          // No label, it's just the URI
+          me.uriToLabels[uri] = uri;
+        }
+      });
+      return aCall;
+    }
+  }
 
   //TODO: these line drawing methods don't care about the instance, they should live somewhere else
 
@@ -1826,11 +1864,13 @@ LodLiveRenderer.prototype.addBoxTitle = function(title, thisUri, destBox, contai
 };
 
 /**
- * iterates over predicates/object relationships, creating DOM nodes and calculating CSS positioning
+ * iterates over predicates/object relationships, creating DOM nodes and calculating CSS positioning.
+ * currentCounter handles adding inverted nodes after other nodes
  */
-LodLiveRenderer.prototype.createPropertyBoxes = function createPropertyBoxes(inputArray, inputGroup, containerBox, chordsList, chordsListGrouped, isInverse) {
+LodLiveRenderer.prototype.createPropertyBoxes = function createPropertyBoxes(inputArray, inputGroup, containerBox, chordsList, chordsListGrouped, isInverse, currentCounter) {
   var renderer = this;
-  var counter = 1;
+  var counter = currentCounter != null ? currentCounter : 1;
+  //var counter = 1;
   var inserted = {};
   var innerCounter = 1;
   var objectList = [];
@@ -1865,9 +1905,11 @@ LodLiveRenderer.prototype.createPropertyBoxes = function createPropertyBoxes(inp
 
       innerCounter++;
     } else {
-      obj = renderer.createRelatedBox(key, value[key], containerBox, chordsList, counter, isInverse);
-      objectList.push(obj);
-      counter++;
+      if (containerBox.attr('rel') !== value[key]) {
+        obj = renderer.createRelatedBox(key, value[key], containerBox, chordsList, counter, isInverse);
+        objectList.push(obj);
+        counter++;
+      }
     }
   });
 
@@ -1891,6 +1933,7 @@ LodLiveRenderer.prototype.createPropertyGroup = function createPropertyGroup(pre
   .attr('rel', renderer.hashFunc(predicates).toString())
   .attr('data-property', predicates)
   .attr('data-title', predicates + ' \n ' + (groupValue.length) + ' ' + utils.lang('connectedResources'))
+  .attr('title', predicates)
   .css(renderer.getRelationshipCSS(predicates))
   .css({
     'top':  (chordsList[counter][1] - 8) + 'px',
@@ -1924,6 +1967,7 @@ LodLiveRenderer.prototype.createGroupedRelatedBox = function createGroupedRelate
   .addClass('aGrouped')
   .attr('data-circlePos', innerCounter)
   .attr('data-circleParts', 36)
+  .attr('title', predicates)
   .css({
     display: 'none',
     position: 'absolute',
@@ -1947,6 +1991,7 @@ LodLiveRenderer.prototype.createRelatedBox = function createRelatedBox(predicate
   return this._createRelatedBox(predicates, object, containerBox, isInverse)
   .attr('data-circlePos', counter)
   .attr('data-circleParts', 24)
+  .attr('title', predicates)
   .css({
     top: (chordsList[counter][1] - 8) + 'px',
     left: (chordsList[counter][0] - 8) + 'px'
@@ -2164,7 +2209,7 @@ LodLiveRenderer.prototype.drawLines = function(arg) {
  * @param {Object} [canvas] - jQuery canvas node
  * @param {String} [propertyName] - the predicates from which to build the line label
  */
-LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName) {
+LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, uriToLabels) {
   var renderer = this;
   var pos1 = from.position();
   var pos2 = to.position();
@@ -2212,12 +2257,17 @@ LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName) {
 
     label = labelArray.map(function(labelPart) {
       labelPart = $.trim(labelPart);
+      var actualLabel = uriToLabels[labelPart];
 
       if (renderer.arrows[ labelPart ]) {
         lineStyle = renderer.arrows[ labelPart ] + 'Line';
       }
-
-      return utils.shortenKey(labelPart);
+      // Have we got a label or is it just the URI?
+      if (actualLabel !== labelPart) {
+          return actualLabel;
+      } else {
+        return utils.shortenKey(labelPart);
+      }
     })
     // deduplicate
     .filter(function(value, index, self) {
@@ -2534,9 +2584,11 @@ LodLiveRenderer.prototype.initClicks = function initClicks(inst) {
   this.container.on('click', '.relatedBox', function(event) {
     var target = $(event.target);
     var node = target.closest('.lodlive-node');
-
-    target.addClass('exploded');
-    inst.addNewDoc(node, target);
+    // Check for circular reference
+    if (target.attr('rel') != node.attr('rel')) {
+        target.addClass('exploded');
+        inst.addNewDoc(node, target);
+    }
     // event.stopPropagation();
   });
 
