@@ -39,6 +39,7 @@
     */
   function LodLive(container,options) {
     var profile = this.options = options;
+    this.uriToLabels = {};
     this.debugOn = options.debugOn && window.console; // don't debug if there is no console
 
     // allow them to override the docInfo function
@@ -236,7 +237,14 @@
     }
 
     if (!isInverse) {
-      inst.renderer.drawLine(originalCircle, newObj, null, propertyName);
+      var allAjaxCalls = [];
+      propertyName.split('|').forEach(function(property) {
+        var labelKey = property.trim();
+        allAjaxCalls.push(inst.generateLabelAjaxCall(labelKey));
+      });
+      Promise.all(allAjaxCalls).then(values => {
+        inst.renderer.drawLine(originalCircle, newObj, null, propertyName, inst.uriToLabels);
+      });
     }
   };
 
@@ -807,7 +815,8 @@
 
     // iterate over connectedDocs and invertedDocs, creating DOM nodes and calculating CSS positioning
     var connectedNodes = inst.renderer.createPropertyBoxes(connectedDocs, propertyGroup, containerBox, chordsList, chordsListGrouped, false);
-    var invertedNodes = inst.renderer.createPropertyBoxes(invertedDocs, propertyGroupInverted, containerBox, chordsList, chordsListGrouped, true);
+    // Need to start inverted nodes at end of connectedNodes
+    var invertedNodes = inst.renderer.createPropertyBoxes(invertedDocs, propertyGroupInverted, containerBox, chordsList, chordsListGrouped, true, connectedNodes.objectList.length + 1);
 
     // aggiungo al box i link ai documenti correlati
     var objectList = connectedNodes.objectList.concat(invertedNodes.objectList);
@@ -956,6 +965,35 @@
       console.debug((new Date().getTime() - start) + '  findInverseSameAs');
     }
   };
+
+  // Try to get a label for a URI
+  LodLive.prototype.generateLabelAjaxCall = function(uri) {
+    var me = this;
+    // We might already have the label or at least tried to get it
+    if (me.uriToLabels[uri] != null ) {
+      var promise = new Promise(function(resolve, reject) {
+        resolve(uri);
+      });
+      return promise;
+    } else {
+      var SPARQLQuery = me.options.connection['http:'].endpoint + '?query=' + encodeURIComponent(me.options.default.sparql.label.replace('{URI}', uri));
+      var aCall = $.get({
+        contentType: 'application/json',
+        dataType: 'json',
+        url: SPARQLQuery
+      }).done(function(data) {
+        var result = data['results']['bindings'];
+        if (result != null && result.length > 0 && result[0].label != null) {
+          // We have an actual label
+          me.uriToLabels[uri] = result[0].label.value;
+        } else {
+          // No label, it's just the URI
+          me.uriToLabels[uri] = uri;
+        }
+      });
+      return aCall;
+    }
+  }
 
   //TODO: these line drawing methods don't care about the instance, they should live somewhere else
 
