@@ -8,6 +8,8 @@ var addsrc = require('gulp-add-src');
 var browserify = require('browserify');
 var buffer = require('vinyl-buffer');
 var source = require('vinyl-source-stream');
+var connect = require('gulp-connect');
+var babel = require('gulp-babel');
 
 gulp.task('deps', function() {
   return gulp.src(['./js/deps/*.js', '!./js/deps/jquery-ui-1.9.2.min.js'])
@@ -21,6 +23,7 @@ gulp.task('scripts', function() {
     .pipe(buffer())
     .pipe(concat('ml-lodlive.js'))
     .pipe(gulp.dest('./dist/'))
+    .pipe(babel({presets: ['babel-preset-es2015']}))
     .pipe(uglify())
     .pipe(rename('ml-lodlive.min.js'))
     .pipe(gulp.dest('./dist/'));
@@ -48,4 +51,10 @@ gulp.task('package', ['build'], function() {
     .pipe(tar('ml-lodlive.tar'))
     .pipe(gzip())
     .pipe(gulp.dest('./'));
+});
+
+gulp.task('connect',function(){
+        connect.server({
+            port:3016
+        });
 });

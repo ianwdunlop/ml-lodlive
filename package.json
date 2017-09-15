@@ -7,11 +7,14 @@
     "test": "karma start"
   },
   "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-preset-es2015": "^6.24.1",
     "browserify": "^11.1.0",
     "browserify-istanbul": "^0.2.1",
     "chai": "^3.3.0",
     "gulp": "^3.9.0",
     "gulp-add-src": "^0.2.0",
+    "gulp-babel": "^7.0.0",
     "gulp-concat": "^2.4.3",
     "gulp-gzip": "0.0.8",
     "gulp-rename": "^1.2.0",
@@ -33,5 +36,8 @@
     "sinon-chai": "^2.8.0",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.1.0"
+  },
+  "dependencies": {
+    "gulp-connect": "^5.0.0"
   }
 }
