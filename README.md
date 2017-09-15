@@ -95,6 +95,9 @@ document is used to generate the docInfo properties displayed when clicking the 
 
 ml-lodlive can acknowledge inverse relationships if configured to do so.  This sparql query will be used to detect if any of the open nodes are inversely related to the current node.
 
+### label
+used to fetch label(s) associated with a property. If a label is available then it is written above the predicate line rather than the URI.
+
 UI
 --
 
