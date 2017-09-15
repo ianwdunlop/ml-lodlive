@@ -512,11 +512,13 @@ LodLiveRenderer.prototype.addBoxTitle = function(title, thisUri, destBox, contai
 };
 
 /**
- * iterates over predicates/object relationships, creating DOM nodes and calculating CSS positioning
+ * iterates over predicates/object relationships, creating DOM nodes and calculating CSS positioning.
+ * currentCounter handles adding inverted nodes after other nodes
  */
-LodLiveRenderer.prototype.createPropertyBoxes = function createPropertyBoxes(inputArray, inputGroup, containerBox, chordsList, chordsListGrouped, isInverse) {
+LodLiveRenderer.prototype.createPropertyBoxes = function createPropertyBoxes(inputArray, inputGroup, containerBox, chordsList, chordsListGrouped, isInverse, currentCounter) {
   var renderer = this;
-  var counter = 1;
+  var counter = currentCounter != null ? currentCounter : 1;
+  //var counter = 1;
   var inserted = {};
   var innerCounter = 1;
   var objectList = [];
@@ -551,9 +553,11 @@ LodLiveRenderer.prototype.createPropertyBoxes = function createPropertyBoxes(inp
 
       innerCounter++;
     } else {
-      obj = renderer.createRelatedBox(key, value[key], containerBox, chordsList, counter, isInverse);
-      objectList.push(obj);
-      counter++;
+      if (containerBox.attr('rel') !== value[key]) {
+        obj = renderer.createRelatedBox(key, value[key], containerBox, chordsList, counter, isInverse);
+        objectList.push(obj);
+        counter++;
+      }
     }
   });
 
@@ -577,6 +581,7 @@ LodLiveRenderer.prototype.createPropertyGroup = function createPropertyGroup(pre
   .attr('rel', renderer.hashFunc(predicates).toString())
   .attr('data-property', predicates)
   .attr('data-title', predicates + ' \n ' + (groupValue.length) + ' ' + utils.lang('connectedResources'))
+  .attr('title', predicates)
   .css(renderer.getRelationshipCSS(predicates))
   .css({
     'top':  (chordsList[counter][1] - 8) + 'px',
@@ -610,6 +615,7 @@ LodLiveRenderer.prototype.createGroupedRelatedBox = function createGroupedRelate
   .addClass('aGrouped')
   .attr('data-circlePos', innerCounter)
   .attr('data-circleParts', 36)
+  .attr('title', predicates)
   .css({
     display: 'none',
     position: 'absolute',
@@ -633,6 +639,7 @@ LodLiveRenderer.prototype.createRelatedBox = function createRelatedBox(predicate
   return this._createRelatedBox(predicates, object, containerBox, isInverse)
   .attr('data-circlePos', counter)
   .attr('data-circleParts', 24)
+  .attr('title', predicates)
   .css({
     top: (chordsList[counter][1] - 8) + 'px',
     left: (chordsList[counter][0] - 8) + 'px'
@@ -850,7 +857,7 @@ LodLiveRenderer.prototype.drawLines = function(arg) {
  * @param {Object} [canvas] - jQuery canvas node
  * @param {String} [propertyName] - the predicates from which to build the line label
  */
-LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName) {
+LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, uriToLabels) {
   var renderer = this;
   var pos1 = from.position();
   var pos2 = to.position();
@@ -898,12 +905,17 @@ LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName) {
 
     label = labelArray.map(function(labelPart) {
       labelPart = $.trim(labelPart);
+      var actualLabel = uriToLabels[labelPart];
 
       if (renderer.arrows[ labelPart ]) {
         lineStyle = renderer.arrows[ labelPart ] + 'Line';
       }
-
-      return utils.shortenKey(labelPart);
+      // Have we got a label or is it just the URI?
+      if (actualLabel !== labelPart) {
+          return actualLabel;
+      } else {
+        return utils.shortenKey(labelPart);
+      }
     })
     // deduplicate
     .filter(function(value, index, self) {
@@ -1220,9 +1232,11 @@ LodLiveRenderer.prototype.initClicks = function initClicks(inst) {
   this.container.on('click', '.relatedBox', function(event) {
     var target = $(event.target);
     var node = target.closest('.lodlive-node');
-
-    target.addClass('exploded');
-    inst.addNewDoc(node, target);
+    // Check for circular reference
+    if (target.attr('rel') != node.attr('rel')) {
+        target.addClass('exploded');
+        inst.addNewDoc(node, target);
+    }
     // event.stopPropagation();
   });
 
