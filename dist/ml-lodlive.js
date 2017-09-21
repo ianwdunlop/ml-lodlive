@@ -149,6 +149,7 @@
 
     // TODO: do this in renderer.init()?
     this.renderer.msg('', 'init');
+    this.createLozengeCheckbox();
   };
 
   LodLive.prototype.autoExpand = function() {
@@ -994,6 +995,35 @@
       });
       return aCall;
     }
+  }
+
+  LodLive.prototype.createLozengeCheckbox = function() {
+    var me = this;
+    var div = document.createElement("div"); 
+    div.classList.add("flip-div");
+    var checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "lozenge-checkbox";
+    checkbox.onclick = function() {
+      me.changeToLozengeView();
+    };
+
+    var label = document.createElement('label')
+    label.htmlFor = "lozenge-checkbox";
+    label.appendChild(document.createTextNode('Change view'));
+    div.appendChild(checkbox);
+    div.appendChild(label);
+    var nav = document.getElementById("navbar");
+    document.body.insertBefore(div, nav.nextSibling); 
+  }
+
+  LodLive.prototype.changeToLozengeView = function() {
+      Array.from(document.getElementsByClassName('sprite')).forEach(function(element) {
+          element.style.height = "60px";
+          element.style.borderRadius = "20px";
+      });
+      var target = document.getElementById("-2045223458");
+      this.renderer.reDrawLines($(target));
   }
 
   //TODO: these line drawing methods don't care about the instance, they should live somewhere else
@@ -2300,71 +2330,47 @@ LodLiveRenderer.prototype.standardLine = function(label, x1, y1, x2, y2, canvas,
   var lineangle = (Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI) + 180;
   var x2bis = x1 - Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) + 60;
   //canvas.detectPixelRatio();
-  canvas.rotateCanvas({
-    rotate : lineangle,
-    x : x1,
-    y : y1
-  }).drawLine({
-    strokeStyle : '#fff',
-    strokeWidth : 1,
-    strokeCap : 'bevel',
-    x1 : x1 - 60,
-    y1 : y1,
-    x2 : x2bis,
-    y2 : y1
-  });
+  var ctx = $(canvas)[0].getContext("2d");
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = "#fff";
+  ctx.stroke();
+  ctx.save();
 
-  if (lineangle > 90 && lineangle < 270) {
-    canvas.rotateCanvas({
-      rotate : 180,
-      x : (x2bis + x1) / 2,
-      y : (y1 + y1) / 2
-    });
+  var radians = lineangle * Math.PI /180;
+  var namesForLine = "<< " + label;
+  var textY = 10;
+  if(lineangle > 90 && lineangle < 270) {
+      textY = -5;
+      namesForLine = label + " >>";
   }
-  label = $.trim(label).replace(/\n/g, ', ');
-  canvas.drawText({// inserisco l'etichetta
-    fillStyle : '#606060',
-    strokeStyle : '#606060',
-    x : (x2bis + x1 + ((x1 + 60) > x2 ? -60 : +60)) / 2,
-    y : (y1 + y1 - ((x1 + 60) > x2 ? 18 : -18)) / 2,
-    text : label ,
-    align : 'center',
-    strokeWidth : 0.01,
-    fontSize : 11,
-    fontFamily : '"Open Sans",Verdana'
-  }).restoreCanvas().restoreCanvas();
-  //TODO:  why is this called twice?
+  var textWidth = ctx.measureText(namesForLine).width;
+  var textMove = textWidth / 2;
+  var hyp = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 -y1, 2));
+  if (x2 < x1) {
+    var x = x1;
+    var y = y1;
+    x1 = x2;
+    x2 = x;
+    y1 = y2;
+    y2 = y;
+  }
+  var aX = x1 + (((hyp - textWidth) * (x2 - x1)) / (2 * hyp));
+  var aY = y1 + (((hyp - textWidth) * (y2 - y1)) / (2 * hyp));
 
-  // ed inserisco la freccia per determinarne il verso della
-  // relazione
-  lineangle = Math.atan2(y2 - y1, x2 - x1);
-  var angle = 0.79;
-  var h = Math.abs(8 / Math.cos(angle));
-  var fromx = x2 - 60 * Math.cos(lineangle);
-  var fromy = y2 - 60 * Math.sin(lineangle);
-  var angle1 = lineangle + Math.PI + angle;
-  var topx = (x2 + Math.cos(angle1) * h) - 60 * Math.cos(lineangle);
-  var topy = (y2 + Math.sin(angle1) * h) - 60 * Math.sin(lineangle);
-  var angle2 = lineangle + Math.PI - angle;
-  var botx = (x2 + Math.cos(angle2) * h) - 60 * Math.cos(lineangle);
-  var boty = (y2 + Math.sin(angle2) * h) - 60 * Math.sin(lineangle);
+  ctx.align = "right";
+  ctx.translate(aX, aY);
+  ctx.rotate(radians);
+  if (lineangle > 90 && lineangle < 270) {
+    ctx.rotate(Math.PI);
+  }
+ 
+  if (label != null) {
+    ctx.fillText(namesForLine, 0, textY);
+  }
+  ctx.restore();
 
-  canvas.drawLine({
-    strokeStyle : '#fff',
-    strokeWidth : 1,
-    x1 : fromx,
-    y1 : fromy,
-    x2 : botx,
-    y2 : boty
-  });
-  canvas.drawLine({
-    strokeStyle : '#fff',
-    strokeWidth : 1,
-    x1 : fromx,
-    y1 : fromy,
-    x2 : topx,
-    y2 : topy
-  });
 };
 
 /**
@@ -2374,76 +2380,50 @@ LodLiveRenderer.prototype.isSameAsLine = function(label, x1, y1, x2, y2, canvas,
 
   // eseguo i calcoli e scrivo la riga di connessione tra i cerchi
   // calculate the angle and draw the line between nodes
+  // eseguo i calcoli e scrivo la riga di connessione tra i cerchi
   var lineangle = (Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI) + 180;
   var x2bis = x1 - Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) + 60;
   //canvas.detectPixelRatio();
-  canvas.rotateCanvas({
-    rotate : lineangle,
-    x : x1,
-    y : y1
-  }).drawLine({
-    strokeStyle : '#000',
-    strokeWidth : 1,
-    strokeCap : 'bevel',
-    x1 : x1 - 60,
-    y1 : y1,
-    x2 : x2bis,
-    y2 : y1
-  });
+  var ctx = $(canvas)[0].getContext("2d");
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = "#000";
+  ctx.stroke();
+  ctx.save();
 
-  if (lineangle > 90 && lineangle < 270) {
-    canvas.rotateCanvas({
-      rotate : 180,
-      x : (x2bis + x1) / 2,
-      y : (y1 + y1) / 2
-    });
+  var radians = lineangle * Math.PI /180;
+  var namesForLine = "<< " + label;
+  var textY = 10;
+  if(lineangle > 90 && lineangle < 270) {
+      textY = -5;
+      namesForLine = label + " >>";
   }
-  label = $.trim(label).replace(/\n/g, ', ');
+  var textWidth = ctx.measureText(namesForLine).width;
+  var textMove = textWidth / 2;
+  var hyp = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 -y1, 2));
+  if (x2 < x1) {
+    var x = x1;
+    var y = y1;
+    x1 = x2;
+    x2 = x;
+    y1 = y2;
+    y2 = y;
+  }
+  var aX = x1 + (((hyp - textWidth) * (x2 - x1)) / (2 * hyp));
+  var aY = y1 + (((hyp - textWidth) * (y2 - y1)) / (2 * hyp));
 
-  // inserisco l'etichetta
-  // add the label
-  canvas.drawText({
-    fillStyle : '#000',
-    strokeStyle : '#000',
-    x : (x2bis + x1 + ((x1 + 60) > x2 ? -60 : +60)) / 2,
-    y : (y1 + y1 - ((x1 + 60) > x2 ? 18 : -18)) / 2,
-    text : ((x1 + 60) > x2 ? ' « ' : '') + label + ((x1 + 60) > x2 ? '' : ' » '),
-    align : 'center',
-    strokeWidth : 0.01,
-    fontSize : 11,
-    fontFamily : '"Open Sans",Verdana'
-  }).restoreCanvas().restoreCanvas();
-
-  // ed inserisco la freccia per determinarne il verso della relazione
-  // insert the arrow to determine the direction of the relationship
-  lineangle = Math.atan2(y2 - y1, x2 - x1);
-  var angle = 0.79;
-  var h = Math.abs(8 / Math.cos(angle));
-  var fromx = x2 - 60 * Math.cos(lineangle);
-  var fromy = y2 - 60 * Math.sin(lineangle);
-  var angle1 = lineangle + Math.PI + angle;
-  var topx = (x2 + Math.cos(angle1) * h) - 60 * Math.cos(lineangle);
-  var topy = (y2 + Math.sin(angle1) * h) - 60 * Math.sin(lineangle);
-  var angle2 = lineangle + Math.PI - angle;
-  var botx = (x2 + Math.cos(angle2) * h) - 60 * Math.cos(lineangle);
-  var boty = (y2 + Math.sin(angle2) * h) - 60 * Math.sin(lineangle);
-
-  canvas.drawLine({
-    strokeStyle : '#000',
-    strokeWidth : 1,
-    x1 : fromx,
-    y1 : fromy,
-    x2 : botx,
-    y2 : boty
-  });
-  canvas.drawLine({
-    strokeStyle : '#000',
-    strokeWidth : 1,
-    x1 : fromx,
-    y1 : fromy,
-    x2 : topx,
-    y2 : topy
-  });
+  ctx.align = "right";
+  ctx.translate(aX, aY);
+  ctx.rotate(radians);
+  if (lineangle > 90 && lineangle < 270) {
+    ctx.rotate(Math.PI);
+  }
+ 
+  if (label != null) {
+    ctx.fillText(namesForLine, 0, textY);
+  }
+  ctx.restore();
 };
 
 LodLiveRenderer.prototype.msg = function(msg, action, type, endpoint, inverse) {
