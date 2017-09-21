@@ -8,20 +8,30 @@
     html, body, #lodlive { height: 100%; width: 100% }
     .navbar-right { margin-right: 0}
     .lodlive-docinfo { top: 45px; }
+    .flip-div {
+      position: absolute;
+      top: 50px;
+      left: 20px;
+    }
   </style>
 </head>
-
+<body>
 <div id="lodlive"></div>
 
-<nav class="navbar navbar-inverse navbar-fixed-top">
+<nav id="navbar" class="navbar navbar-inverse navbar-fixed-top">
   <div class="container-fluid">
     <div class="navbar-brand">ml-lodlive</div>
     <div class="navbar-right navbar-text">v0.1</div>
   </div>
 </nav>
 
+<script src="http://code.jquery.com/jquery-1.12.4.min.js"></script>
 <!-- dependencies not in complete -->
-<script src="js/deps/jquery-ui-1.9.2.min.js"></script>
+<script src="http://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+<!-- dependencies not in complete -->
+
+<!-- dependencies not in complete -->
+<!-- <script src="js/deps/jquery-ui-1.9.2.min.js"></script> -->
 <!-- dependencies not in complete -->
 
 <!-- Would like to remove these deps -->
@@ -31,7 +41,7 @@
 <script src="js/profile/profile.example.js"></script>
 <script>
   'use strict';
-  jQuery('#lodlive').lodlive({ profile: ExampleProfile, firstUri: 'http://dbpedia.org/resource/Philadelphia_Flyers', ignoreBnodes: true }); 
+  var ll = jQuery('#lodlive').lodlive({ profile: ExampleProfile, firstUri: 'http://dbpedia.org/resource/Philadelphia_Flyers', ignoreBnodes: true }); 
 </script>
-
+</body>
 </html>
