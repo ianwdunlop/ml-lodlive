@@ -148,6 +148,7 @@
 
     // TODO: do this in renderer.init()?
     this.renderer.msg('', 'init');
+    this.createLozengeCheckbox();
   };
 
   LodLive.prototype.autoExpand = function() {
@@ -993,6 +994,35 @@
       });
       return aCall;
     }
+  }
+
+  LodLive.prototype.createLozengeCheckbox = function() {
+    var me = this;
+    var div = document.createElement("div"); 
+    div.classList.add("flip-div");
+    var checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "lozenge-checkbox";
+    checkbox.onclick = function() {
+      me.changeToLozengeView();
+    };
+
+    var label = document.createElement('label')
+    label.htmlFor = "lozenge-checkbox";
+    label.appendChild(document.createTextNode('Change view'));
+    div.appendChild(checkbox);
+    div.appendChild(label);
+    var nav = document.getElementById("navbar");
+    document.body.insertBefore(div, nav.nextSibling); 
+  }
+
+  LodLive.prototype.changeToLozengeView = function() {
+      Array.from(document.getElementsByClassName('sprite')).forEach(function(element) {
+          element.style.height = "60px";
+          element.style.borderRadius = "20px";
+      });
+      var target = document.getElementById("-2045223458");
+      this.renderer.reDrawLines($(target));
   }
 
   //TODO: these line drawing methods don't care about the instance, they should live somewhere else
