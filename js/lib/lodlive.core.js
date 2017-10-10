@@ -144,6 +144,7 @@
     };
 
     var firstBox = this.renderer.firstBox(firstUri);
+    this.initialNode = firstBox;
     this.openDoc(firstUri, firstBox);
 
     // TODO: do this in renderer.init()?
@@ -1021,7 +1022,16 @@
           element.style.height = "60px";
           element.style.borderRadius = "20px";
       });
-      var target = document.getElementById("-2045223458");
+      Array.from(document.getElementsByClassName('relatedBox')).forEach(function(element) {
+          element.style.visibility = "hidden";
+      });
+      Array.from(document.getElementsByClassName('groupedRelatedBox')).forEach(function(element) {
+          element.style.visibility = "hidden";
+      });
+      Array.from(document.getElementsByClassName('pageNext')).forEach(function(element) {
+          element.style.visibility = "hidden";
+      });
+      var target = this.initialNode[0];
       this.renderer.reDrawLines($(target));
   }
 
