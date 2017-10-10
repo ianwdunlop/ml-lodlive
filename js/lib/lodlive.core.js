@@ -1031,6 +1031,9 @@
       Array.from(document.getElementsByClassName('pageNext')).forEach(function(element) {
           element.style.visibility = "hidden";
       });
+      Array.from(document.getElementsByClassName('actionBox')).forEach(function(element) {
+          element.style.top = "-9px";
+      });
       var target = this.initialNode[0];
       this.renderer.reDrawLines($(target));
   }
