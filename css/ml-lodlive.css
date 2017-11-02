@@ -156,3 +156,7 @@
   z-index: 101;
   text-align: center;
 }
+#lozenge-div {
+  position: absolute;
+  z-index: 1000;
+}

@@ -238,15 +238,18 @@
       inst.openDoc(rel, newObj, fromInverse);
     }
 
-    if (!isInverse) {
       var allAjaxCalls = [];
       propertyName.split('|').forEach(function(property) {
         var labelKey = property.trim();
         allAjaxCalls.push(inst.generateLabelAjaxCall(labelKey));
       });
+
+    if (!isInverse) {
       Promise.all(allAjaxCalls).then(values => {
         inst.renderer.drawLine(originalCircle, newObj, null, propertyName, inst.uriToLabels);
       });
+    } else {
+        inst.renderer.drawLine(newObj, originalCircle, null, propertyName, inst.uriToLabels);
     }
   };
 
@@ -1013,8 +1016,8 @@
     label.appendChild(document.createTextNode('Change view'));
     div.appendChild(checkbox);
     div.appendChild(label);
-    var nav = document.getElementById("navbar");
-    document.body.insertBefore(div, nav.nextSibling); 
+    var nav = document.getElementById("lozenge-div");
+    nav.appendChild(div);
   }
 
   LodLive.prototype.changeToLozengeView = function() {
