@@ -790,9 +790,10 @@ LodLiveRenderer.prototype.getRelatedNodePairs = function(id, excludeSelf) {
 
   // get objects where id is the subject
   var objectIds = renderer.refs.getObjectRefs(id)
-
+  objectIds = Array.from(new Set(objectIds));
   // get subjects where id is the object
   var subjectIds = renderer.refs.getSubjectRefs(id);
+  subjectIds = Array.from(new Set(subjectIds));
 
   if (!excludeSelf) {
     node = renderer.context.find('#' + id);
@@ -863,9 +864,14 @@ LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, ur
   var pos2 = to.position();
   var fromId = from.attr('id');
   var toId = to.attr('id');
-
+//  if (canvas == null && document.getElementById('line-' + fromId) !== null) {
+//    return
+//  }
   if (!canvas) {
-    canvas = $('#line-' + fromId);
+    canvas = document.getElementById('line-' + fromId)
+    if (canvas == null) {
+      canvas = $('#line-' + fromId);
+    }
   }
 
   if (!canvas.length) {

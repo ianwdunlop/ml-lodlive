@@ -189,6 +189,12 @@
 
       inst.refs.addObjectRef(circleId, aId);
       inst.refs.addSubjectRef(aId, circleId);
+    } else {
+      if (inst.refs.getObjectRefs(Number.parseInt(aId)).indexOf(circleId.toString()) > -1) {
+        return;
+      }
+      inst.refs.addSubjectRef(circleId.toString(), Number.parseInt(aId));
+      inst.refs.addObjectRef(Number.parseInt(aId), circleId.toString());
     }
 
     var newObj = inst.context.find('#' + aId);
@@ -249,7 +255,9 @@
         inst.renderer.drawLine(originalCircle, newObj, null, propertyName, inst.uriToLabels);
       });
     } else {
+      Promise.all(allAjaxCalls).then(values => {
         inst.renderer.drawLine(newObj, originalCircle, null, propertyName, inst.uriToLabels);
+      });
     }
   };
 
