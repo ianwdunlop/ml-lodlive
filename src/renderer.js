@@ -134,7 +134,24 @@ LodLiveRenderer.prototype.firstBox = function(firstUri) {
   })
   .animate({ opacity: 1}, 1000);
 
-  renderer.context.append(aBox);
+  ctx.append(aBox);
+
+  // create single canvas for line drawing
+  var canvas = $('<canvas></canvas>')
+  .attr('height', ctx.height())
+  .attr('width', ctx.width())
+  .attr('id', 'lodlive-canvas')
+  .css({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: '0'
+  });
+
+  canvas.data().lines = {};
+
+  ctx.append(canvas);
+  renderer.canvas = canvas;
 
   return aBox;
 };
@@ -846,7 +863,7 @@ LodLiveRenderer.prototype.drawLines = function(arg) {
   }
 
   pairs.forEach(function(pair) {
-    renderer.drawLine(pair.from, pair.to, pair.canvas);
+    renderer.drawLine(pair.from, pair.to, renderer.canvas);
   });
 };
 
@@ -867,33 +884,36 @@ LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, ur
 //  if (canvas == null && document.getElementById('line-' + fromId) !== null) {
 //    return
 //  }
-  if (!canvas) {
-    canvas = document.getElementById('line-' + fromId)
-    if (canvas == null) {
-      canvas = $('#line-' + fromId);
-    }
+//  if (!canvas) {
+//    canvas = document.getElementById('line-' + fromId)
+//    if (canvas == null) {
+//      canvas = $('#line-' + fromId);
+//    }
+//  }
+
+//  if (!canvas.length) {
+//    canvas = $('<canvas></canvas>')
+//    .attr('height', renderer.context.height())
+//    .attr('width', renderer.context.width())
+//    .attr('id', 'line-' + fromId)
+//    .css({
+//      position: 'absolute',
+//      top: 0,
+//      left: 0,
+//      zIndex: '0'
+//    });
+//
+//    canvas.data().lines = {};
+//
+//    renderer.context.append(canvas);
+//  }
+  if (canvas == null) {
+    canvas = renderer.canvas;
   }
 
-  if (!canvas.length) {
-    canvas = $('<canvas></canvas>')
-    .attr('height', renderer.context.height())
-    .attr('width', renderer.context.width())
-    .attr('id', 'line-' + fromId)
-    .css({
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      zIndex: '0'
-    });
-
-    canvas.data().lines = {};
-
-    renderer.context.append(canvas);
-  }
-
-  // TODO: just build the label directly, skip the data-propertyName-{ID} attribute
-  if (propertyName && !canvas.data('propertyName-' + toId)) {
-    canvas.attr('data-propertyName-' + toId, propertyName);
+  // TODO: just build the label directly, skip the fromId + '-' + data-propertyName-{ID} attribute
+  if (propertyName && !canvas.data('propertyName-' + fromId + '-'+ toId)) {
+    canvas.attr('data-propertyName-' + fromId + '-' + toId, propertyName);
   }
 
   if (!canvas.data().lines[toId]) {
@@ -907,7 +927,7 @@ LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, ur
   var labelArray;
 
   if (!label) {
-    labelArray = canvas.attr('data-propertyName-' + toId).split(/\|/);
+    labelArray = canvas.attr('data-propertyName-' + fromId + '-' + toId).split(/\|/);
 
     label = labelArray.map(function(labelPart) {
       labelPart = $.trim(labelPart);
