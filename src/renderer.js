@@ -227,7 +227,16 @@ LodLiveRenderer.prototype.reDrawLines = function(target) {
   Object.keys(renderer.refs.storeIds).forEach(function(key) {
     var refs = renderer.refs.storeIds[key];
     refs.forEach(function(ref) {
-      nodes.push({"from": key.slice(3), "to": ref})
+      var contains = false;
+      var newNode = {"from": key.slice(3), "to": ref};
+      nodes.forEach(function(node) {
+          if(!contains && JSON.stringify(node) === JSON.stringify(newNode)) {
+            contains = true;
+          }
+      });
+      if (!contains) {
+        nodes.push(newNode);
+      }
     });
   }); 
 //  var canvases = renderer.getRelatedCanvases(id);
