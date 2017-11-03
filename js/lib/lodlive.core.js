@@ -183,14 +183,14 @@
 
     if (!isInverse) {
       // TODO: add explaination for early return
-      if (inst.refs.getObjectRefs(circleId).indexOf(aId) > -1) {
+      if (inst.refs.getObjectRefs(circleId).indexOf(aId.toString()) > -1) {
         return;
       }
 
       inst.refs.addObjectRef(circleId, aId);
-      inst.refs.addSubjectRef(aId, circleId);
+      inst.refs.addSubjectRef(aId, circleId.toString());
     } else {
-      if (inst.refs.getObjectRefs(Number.parseInt(aId)).indexOf(circleId.toString()) > -1) {
+      if (inst.refs.getObjectRefs(aId).indexOf(circleId.toString()) > -1) {
         return;
       }
       inst.refs.addSubjectRef(circleId.toString(), Number.parseInt(aId));
@@ -275,7 +275,7 @@
 
     var id = obj.attr('id');
 
-    inst.renderer.clearLines(id);
+    inst.renderer.clearLines();
 
     // get subjects where id is the object
     var subjectIds = inst.refs.getSubjectRefs(id);
@@ -292,12 +292,33 @@
     });
 
     // get all pairs, excluding self
-    var pairs = inst.renderer.getRelatedNodePairs(id, true);
-    inst.renderer.drawLines(pairs);
+    //var pairs = inst.renderer.getRelatedNodePairs(id, true);
+    //inst.renderer.drawLines(pairs);
 
     // remove references from id
     inst.refs.removeAsSubject(id);
     inst.refs.removeAsObject(id);
+    var nodes = [];
+    if (Object.keys(inst.renderer.refs.storeIds).length === 0) {
+      return;
+    }
+    Object.keys(inst.renderer.refs.storeIds).forEach(function(key) {
+      var refs = inst.renderer.refs.storeIds[key];
+      refs.forEach(function(ref) {
+        var contains = false;
+        var newNode = {"from": key.slice(3), "to": ref};
+        nodes.forEach(function(node) {
+            if(!contains && JSON.stringify(node) === JSON.stringify(newNode)) {
+              contains = true;
+            }
+        });
+        if (!contains) {
+          nodes.push({"from": key.slice(3), "to": ref});
+        }
+      });
+    });
+
+    inst.renderer.drawLines(nodes); 
 
     // Image rendering has been disabled; keeping for posterity ...
     // var cp = inst.context.find('.lodLiveControlPanel');
