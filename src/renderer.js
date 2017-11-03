@@ -217,15 +217,23 @@ LodLiveRenderer.prototype.generateTools = function(container, obj, inst) {
 LodLiveRenderer.prototype.reDrawLines = function(target) {
   var renderer = this;
   var id = target.attr('id');
-  var nodes = renderer.getRelatedNodePairs(id);
+//  var nodes = renderer.getRelatedNodePairs(id);
 
-  if (!nodes || !nodes.length) return;
-
-  var canvases = renderer.getRelatedCanvases(id);
+//  if (!nodes || !nodes.length) return;
+  var nodes = [];
+  if (Object.keys(renderer.refs.storeIds).length === 0) {
+    return;
+  }
+  Object.keys(renderer.refs.storeIds).forEach(function(key) {
+    var refs = renderer.refs.storeIds[key];
+    refs.forEach(function(ref) {
+      nodes.push({"from": key.slice(3), "to": ref})
+    });
+  }); 
+//  var canvases = renderer.getRelatedCanvases(id);
   var shouldContinue = true;
-
   function draw() {
-    renderer.clearLines(canvases);
+    renderer.clearLines();
     renderer.drawLines(nodes);
 
     if (shouldContinue) {
@@ -779,17 +787,18 @@ LodLiveRenderer.prototype.getRelatedCanvases = function(id) {
  * @param {Array<Object>} [canvases] - an array of canvas objects
  */
 LodLiveRenderer.prototype.clearLines = function(arg) {
-  var canvases;
-
-  if (Array.isArray(arg)) {
-    canvases = arg;
-  } else {
-    canvases = this.getRelatedCanvases(arg);
-  }
-
-  canvases.forEach(function(canvas) {
-    canvas.clearCanvas();
-  });
+  this.canvas.clearCanvas();
+//  var canvases;
+//
+//  if (Array.isArray(arg)) {
+//    canvases = arg;
+//  } else {
+//    canvases = this.getRelatedCanvases(arg);
+//  }
+//
+//  canvases.forEach(function(canvas) {
+//    canvas.clearCanvas();
+//  });
 };
 
 /**
@@ -852,18 +861,17 @@ LodLiveRenderer.prototype.getRelatedNodePairs = function(id, excludeSelf) {
  * @param {String} [id] - the id of a subject or object node
  * @param {Array<Object>} [pairs] an array containing pairs of related nodes and their canvas
  */
-LodLiveRenderer.prototype.drawLines = function(arg) {
+LodLiveRenderer.prototype.drawLines = function(nodes) {
   var renderer = this;
-  var pairs;
+//  var pairs;
 
-  if (Array.isArray(arg)) {
-    pairs = arg;
-  } else {
-    pairs = renderer.getRelatedNodePairs(arg);
-  }
-
-  pairs.forEach(function(pair) {
-    renderer.drawLine(pair.from, pair.to, renderer.canvas);
+//  if (Array.isArray(arg)) {
+//    pairs = arg;
+//  } else {
+//    pairs = renderer.getRelatedNodePairs(arg);
+//  }
+  nodes.forEach(function(pair) {
+    renderer.drawLine($(document.getElementById(pair.from)), $(document.getElementById(pair.to), renderer.canvas));
   });
 };
 
@@ -916,17 +924,21 @@ LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, ur
     canvas.attr('data-propertyName-' + fromId + '-' + toId, propertyName);
   }
 
-  if (!canvas.data().lines[toId]) {
-    canvas.data().lines[toId] = {};
+  if (!canvas.data().lines[fromId + '-' + toId]) {
+    canvas.data().lines[fromId + '-' + toId] = {};
   }
 
-  var line = canvas.data().lines[toId];
+  var line = canvas.data().lines[fromId + '-' + toId];
 
   var lineStyle = line.lineStyle || 'standardLine';
   var label = line.label;
   var labelArray;
 
   if (!label) {
+    // Might not be a line between them, just an inverse
+    if (canvas.attr('data-propertyName-' + fromId + '-' + toId) == null) {
+      return;
+    }
     labelArray = canvas.attr('data-propertyName-' + fromId + '-' + toId).split(/\|/);
 
     label = labelArray.map(function(labelPart) {
