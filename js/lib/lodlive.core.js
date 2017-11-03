@@ -681,6 +681,14 @@
       }
     });
 
+    //  Annoying edge case. Found examples where comment used when it should have been label.
+    if(titlePieces.length === 0) {
+      var titleValues = inst.getJsonValue(values, "http://www.w3.org/2000/01/rdf-schema#comment", "http://www.w3.org/2000/01/rdf-schema#comment");
+      titleValues.forEach(function(titleValue) {
+        titlePieces.push(titleValue);
+      });    
+    }
+
     var title = titlePieces
     // deduplicate
     .filter(function(value, index, self) {
