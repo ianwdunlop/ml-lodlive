@@ -235,7 +235,7 @@ LodLiveRenderer.prototype.reDrawLines = function(target) {
           }
       });
       if (!contains) {
-        nodes.push(newNode);
+        nodes.push({"from": key.slice(3), "to": ref});
       }
     });
   }); 
@@ -561,7 +561,9 @@ LodLiveRenderer.prototype.createPropertyBoxes = function createPropertyBoxes(inp
   inputArray.forEach(function(value, i) {
     // TODO: refactor; modular arithmetic for CSS positioning
     // counter appears to equal the count of groupedProperties mod 14 plus 1 or 2
-    if (counter === 15) {
+    // TODO this was === 15 but found situation where it skipped past it.
+    // This part all needs reworked!
+    if (counter >= 15) {
       counter = 1;
     }
 
