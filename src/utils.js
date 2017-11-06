@@ -62,6 +62,13 @@ function circleChords(radius, steps, centerX, centerY, breakAt, onlyElement) {
   return values;
 }
 
+// Thanks mozilla. https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
+}
+
 var LodLiveUtils = {
   registerTranslation: registerTranslation,
   setDefaultTranslation: setDefaultTranslation,
@@ -69,7 +76,8 @@ var LodLiveUtils = {
   breakLines: breakLines,
   hashFunc: hashFunc,
   shortenKey: shortenKey,
-  circleChords: circleChords
+  circleChords: circleChords,
+  getRandomInt: getRandomInt
 };
 
 module.exports = LodLiveUtils;
