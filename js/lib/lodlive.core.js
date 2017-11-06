@@ -41,7 +41,8 @@
     var profile = this.options = options;
     this.uriToLabels = {};
     this.debugOn = options.debugOn && window.console; // don't debug if there is no console
-
+    this.colours = ['salmon', 'crimson', 'red', 'deeppink', 'gold', 'moccasin', 'darkkhaki', 'slateblue', 'lime', 'green', 'aqua', 'midnightblue', 'rosybrown', 'gray', 'tan'];
+    this.colourForProperty = {};
     // allow them to override the docInfo function
     if (profile.UI.docInfo) {
       this.docInfo = profile.UI.docInfo;
@@ -150,6 +151,7 @@
     // TODO: do this in renderer.init()?
     this.renderer.msg('', 'init');
     this.createLozengeCheckbox();
+    this.createColourChart();
   };
 
   LodLive.prototype.autoExpand = function() {
@@ -889,6 +891,21 @@
     var inverses = [];
 
     function callback(info) {
+      // Assign colours to uris.
+      var newUris = [];
+      info.uris.forEach(function(uri) {
+        if (!Object.keys(inst.colourForProperty).includes(Object.keys(uri)[0])) {
+           inst.colourForProperty[Object.keys(uri)[0]] = inst.colours[utils.getRandomInt(0,16)];
+           newUris.push(Object.keys(uri)[0]);
+        }
+      });
+      inverses.forEach(function(uri) {
+        if (!Object.keys(inst.colourForProperty).includes(Object.keys(uri)[0])) {
+           inst.colourForProperty[Object.keys(uri)[0]] = inst.colours[utils.getRandomInt(0,16)];
+           newUris.push(Object.keys(uri)[0]);
+        }
+      });
+      inst.addColourToChart(newUris);
       inst.format(destBox.children('.box'), info.values, info.uris, inverses);
 
       if (fromInverse && fromInverse.length) {
@@ -1053,8 +1070,10 @@
     label.appendChild(document.createTextNode('Change view'));
     div.appendChild(checkbox);
     div.appendChild(label);
-    var nav = document.getElementById("lozenge-div");
-    nav.appendChild(div);
+    var ld = document.getElementById("lozenge-div");
+    if (ld != null) {
+      ld.appendChild(div);
+    }
   }
 
   LodLive.prototype.changeToLozengeView = function() {
@@ -1077,6 +1096,53 @@
       var target = this.initialNode[0];
       this.renderer.reDrawLines($(target));
   }
+
+  LodLive.prototype.createColourChart = function() {
+    var me = this;
+    var div = document.createElement("div"); 
+    div.classList.add("colour-chart");
+    var ul = document.createElement("ul");
+    ul.id = "colour-chart-ul";
+//    checkbox.onclick = function() {
+//      me.changeToLozengeView();
+//    };
+
+    var label = document.createElement('label')
+    label.htmlFor = "lozenge-checkbox";
+    label.appendChild(document.createTextNode('Colour Chart'));
+    div.appendChild(label);
+    div.appendChild(ul);
+    var cc = document.getElementById("colour-chart");
+    if (cc != null) {
+      cc.appendChild(div);
+    }
+    // Renderer can update the list when a new uri type gets added
+    me.colourChart = ul;
+  }
+
+
+  LodLive.prototype.addColourToChart = function(newUris) {
+    var cc = this.colourChart;
+    var me = this;
+    newUris.forEach(function(uri) {
+      var li = document.createElement("li"); 
+      li.classList.add("colour-chart-li");
+//    checkbox.onclick = function() {
+//      me.changeToLozengeView();
+//     };
+      var link = document.createElement("a");
+      link.href = uri;
+      link.innerHTML = uri;
+      var colourClick = document.createElement("span");
+      //colourClick.style.backgroundColor = "red";
+      colourClick.setAttribute("style", "background: red; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;");
+      li.appendChild(link);
+      li.appendChild(colourClick);
+      cc.appendChild(li);
+    });
+ 
+  }
+
 
   //TODO: these line drawing methods don't care about the instance, they should live somewhere else
 
