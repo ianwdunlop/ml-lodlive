@@ -165,3 +165,6 @@
   top: 5em;
   z-index: 1000;
 }
+.small-padding-left {
+  padding-left: 0.5em;
+}
