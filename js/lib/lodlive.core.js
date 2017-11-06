@@ -1,4 +1,4 @@
-/*
+ /*
  *
  * lodLive 1.0
  * is developed by Diego Valerio Camarda, Silvia Mazzini and Alessandro Antonuccio
@@ -857,6 +857,23 @@
     var chordsList = utils.circleChords(75, 24, destBox.position().left + 65, destBox.position().top + 65);
     var chordsListGrouped = utils.circleChords(95, 36, destBox.position().left + 65, destBox.position().top + 65);
 
+    // Assign colours to uris.
+    var newUris = [];
+    Object.keys(propertyGroup).forEach(function(uri) {
+      if (!Object.keys(inst.colourForProperty).includes(uri)) {
+         inst.colourForProperty[uri] = inst.colours[utils.getRandomInt(0,16)];
+         newUris.push(uri);
+      }
+    });
+
+    Object.keys(propertyGroupInverted).forEach(function(uri) {
+      if (!Object.keys(inst.colourForProperty).includes(uri)) {
+         inst.colourForProperty[uri] = inst.colours[utils.getRandomInt(0,16)];
+         newUris.push(uri);
+      }
+    });
+    inst.addColourToChart(newUris);
+ 
     // iterate over connectedDocs and invertedDocs, creating DOM nodes and calculating CSS positioning
     var connectedNodes = inst.renderer.createPropertyBoxes(connectedDocs, propertyGroup, containerBox, chordsList, chordsListGrouped, false);
     // Need to start inverted nodes at end of connectedNodes
@@ -892,20 +909,20 @@
 
     function callback(info) {
       // Assign colours to uris.
-      var newUris = [];
-      info.uris.forEach(function(uri) {
-        if (!Object.keys(inst.colourForProperty).includes(Object.keys(uri)[0])) {
-           inst.colourForProperty[Object.keys(uri)[0]] = inst.colours[utils.getRandomInt(0,16)];
-           newUris.push(Object.keys(uri)[0]);
-        }
-      });
-      inverses.forEach(function(uri) {
-        if (!Object.keys(inst.colourForProperty).includes(Object.keys(uri)[0])) {
-           inst.colourForProperty[Object.keys(uri)[0]] = inst.colours[utils.getRandomInt(0,16)];
-           newUris.push(Object.keys(uri)[0]);
-        }
-      });
-      inst.addColourToChart(newUris);
+//      var newUris = [];
+//      info.uris.forEach(function(uri) {
+//        if (!Object.keys(inst.colourForProperty).includes(Object.keys(uri)[0])) {
+//           inst.colourForProperty[Object.keys(uri)[0]] = inst.colours[utils.getRandomInt(0,16)];
+//           newUris.push(Object.keys(uri)[0]);
+//        }
+//      });
+//      inverses.forEach(function(uri) {
+//        if (!Object.keys(inst.colourForProperty).includes(Object.keys(uri)[0])) {
+//           inst.colourForProperty[Object.keys(uri)[0]] = inst.colours[utils.getRandomInt(0,16)];
+//           newUris.push(Object.keys(uri)[0]);
+//        }
+//      });
+//      inst.addColourToChart(newUris);
       inst.format(destBox.children('.box'), info.values, info.uris, inverses);
 
       if (fromInverse && fromInverse.length) {
@@ -1113,8 +1130,8 @@
     propertyColumn.appendChild(document.createTextNode('Property'));
     var colourColumn = document.createElement('th');
     colourColumn.appendChild(document.createTextNode('Colour'));
-    trow.appendChild(propertyColumn);
     trow.appendChild(colourColumn);
+    trow.appendChild(propertyColumn);
     thead.appendChild(trow);
     var tbody = document.createElement('tbody');
     table.appendChild(thead);
@@ -1134,27 +1151,43 @@
     var cc = this.colourChart;
     var me = this;
     newUris.forEach(function(uri) {
+      var allAjaxCalls = [];
+      uri.split('|').forEach(function(property) {
+        var labelKey = property.trim();
+        allAjaxCalls.push(me.generateLabelAjaxCall(labelKey));
+      });
+
+      Promise.all(allAjaxCalls).then(values => {
+
       var tr = document.createElement("tr"); 
       tr.classList.add("colour-chart-row");
 //    checkbox.onclick = function() {
 //      me.changeToLozengeView();
 //     };
-      var link = document.createElement("a");
-      link.href = uri;
-      link.innerHTML = uri;
+      var linkTd = document.createElement('td');
+      var colourTd = document.createElement('td');
+      var links = [];
+      uri.split("|").forEach(function(splitUri) {
+        var link = document.createElement("a");
+        link.classList.add("small-padding-left");
+        link.href = splitUri.trim();
+        link.innerHTML = me.uriToLabels[splitUri.trim()];
+        links.push(link);
+      });
       var colourClick = document.createElement("span");
       //colourClick.style.backgroundColor = "red";
       var colourStyle = "background: " + me.colourForProperty[uri] + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;";
       colourClick.setAttribute("style", colourStyle);
-      var linkTd = document.createElement('td');
-      var colourTd = document.createElement('td');
-      linkTd.appendChild(link);
       colourTd.appendChild(colourClick);
-      tr.appendChild(linkTd);
+      var linkTd = document.createElement('td');
+      links.forEach(function(link) {
+        linkTd.appendChild(link);
+      });
       tr.appendChild(colourTd);
+      tr.appendChild(linkTd);
       cc.appendChild(tr);
     });
- 
+      });
   }
 
 
