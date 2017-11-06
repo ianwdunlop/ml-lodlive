@@ -160,3 +160,8 @@
   position: absolute;
   z-index: 1000;
 }
+#colour-chart {
+  position: fixed;
+  top: 5em;
+  z-index: 1000;
+}

@@ -1099,25 +1099,34 @@
 
   LodLive.prototype.createColourChart = function() {
     var me = this;
-    var div = document.createElement("div"); 
-    div.classList.add("colour-chart");
-    var ul = document.createElement("ul");
-    ul.id = "colour-chart-ul";
+    ///var div = document.createElement("div"); 
+    //div.classList.add("colour-chart");
+    var table = document.createElement("table");
+    table.id = "colour-chart-table";
+    table.classList.add("colour-chart-table");
 //    checkbox.onclick = function() {
 //      me.changeToLozengeView();
 //    };
-
-    var label = document.createElement('label')
-    label.htmlFor = "lozenge-checkbox";
-    label.appendChild(document.createTextNode('Colour Chart'));
-    div.appendChild(label);
-    div.appendChild(ul);
+    var thead = document.createElement('thead');
+    var trow = document.createElement('tr')
+    var propertyColumn =  document.createElement('th');
+    propertyColumn.appendChild(document.createTextNode('Property'));
+    var colourColumn = document.createElement('th');
+    colourColumn.appendChild(document.createTextNode('Colour'));
+    trow.appendChild(propertyColumn);
+    trow.appendChild(colourColumn);
+    thead.appendChild(trow);
+    var tbody = document.createElement('tbody');
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    //div.appendChild(label);
+    //div.appendChild(ul);
     var cc = document.getElementById("colour-chart");
     if (cc != null) {
-      cc.appendChild(div);
+      cc.appendChild(table);
     }
     // Renderer can update the list when a new uri type gets added
-    me.colourChart = ul;
+    me.colourChart = tbody;
   }
 
 
@@ -1125,8 +1134,8 @@
     var cc = this.colourChart;
     var me = this;
     newUris.forEach(function(uri) {
-      var li = document.createElement("li"); 
-      li.classList.add("colour-chart-li");
+      var tr = document.createElement("tr"); 
+      tr.classList.add("colour-chart-row");
 //    checkbox.onclick = function() {
 //      me.changeToLozengeView();
 //     };
@@ -1135,10 +1144,15 @@
       link.innerHTML = uri;
       var colourClick = document.createElement("span");
       //colourClick.style.backgroundColor = "red";
-      colourClick.setAttribute("style", "background: red; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;");
-      li.appendChild(link);
-      li.appendChild(colourClick);
-      cc.appendChild(li);
+      var colourStyle = "background: " + me.colourForProperty[uri] + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;";
+      colourClick.setAttribute("style", colourStyle);
+      var linkTd = document.createElement('td');
+      var colourTd = document.createElement('td');
+      linkTd.appendChild(link);
+      colourTd.appendChild(colourClick);
+      tr.appendChild(linkTd);
+      tr.appendChild(colourTd);
+      cc.appendChild(tr);
     });
  
   }
