@@ -79,6 +79,7 @@ function LodLiveRenderer(options) {
   this.tools = options.tools;
   this.nodeIcons = options.nodeIcons;
   this.relationships = options.relationships;
+  this.colourForProperty = {};
 }
 
 /**
@@ -621,7 +622,8 @@ LodLiveRenderer.prototype.createPropertyGroup = function createPropertyGroup(pre
   .css(renderer.getRelationshipCSS(predicates))
   .css({
     'top':  (chordsList[counter][1] - 8) + 'px',
-    'left': (chordsList[counter][0] - 8) + 'px'
+    'left': (chordsList[counter][0] - 8) + 'px',
+    'color': renderer.colourForProperty[predicates]
   });
 
   if (isInverse) {
@@ -646,6 +648,7 @@ LodLiveRenderer.prototype.createPropertyGroup = function createPropertyGroup(pre
  * create a node to represent a property in a group of related properties
  */
 LodLiveRenderer.prototype.createGroupedRelatedBox = function createGroupedRelatedBox(predicates, object, containerBox, chordsListGrouped, innerCounter, isInverse) {
+  var renderer = this;
   var box = this._createRelatedBox(predicates, object, containerBox, isInverse)
   // this class is probably unnecessary now...
   .addClass('aGrouped')
@@ -656,7 +659,8 @@ LodLiveRenderer.prototype.createGroupedRelatedBox = function createGroupedRelate
     display: 'none',
     position: 'absolute',
     top: (chordsListGrouped[innerCounter][1] - 8) + 'px',
-    left: (chordsListGrouped[innerCounter][0] - 8) + 'px'
+    left: (chordsListGrouped[innerCounter][0] - 8) + 'px',
+    'color': renderer.colourForProperty[predicates]
   });
 
   if (isInverse) {
@@ -672,13 +676,15 @@ LodLiveRenderer.prototype.createGroupedRelatedBox = function createGroupedRelate
  * create a node to represent a related property
  */
 LodLiveRenderer.prototype.createRelatedBox = function createRelatedBox(predicates, object, containerBox, chordsList, counter, isInverse) {
+  var renderer = this;
   return this._createRelatedBox(predicates, object, containerBox, isInverse)
   .attr('data-circlePos', counter)
   .attr('data-circleParts', 24)
   .attr('title', predicates)
   .css({
     top: (chordsList[counter][1] - 8) + 'px',
-    left: (chordsList[counter][0] - 8) + 'px'
+    left: (chordsList[counter][0] - 8) + 'px',
+    'color': renderer.colourForProperty[predicates]
   });
 };
 

@@ -164,7 +164,13 @@
   position: fixed;
   top: 5em;
   z-index: 1000;
+  background: white;
+  border: 1px solid black;
+  padding: 1em;
 }
 .small-padding-left {
   padding-left: 0.5em;
+}
+.invisible {
+  visibility: hidden;
 }

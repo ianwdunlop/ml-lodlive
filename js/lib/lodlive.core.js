@@ -151,6 +151,7 @@
     // TODO: do this in renderer.init()?
     this.renderer.msg('', 'init');
     this.createLozengeCheckbox();
+    this.createColourSelector();
     this.createColourChart();
   };
 
@@ -872,6 +873,7 @@
          newUris.push(uri);
       }
     });
+    inst.renderer.colourForProperty = inst.colourForProperty;
     inst.addColourToChart(newUris);
  
     // iterate over connectedDocs and invertedDocs, creating DOM nodes and calculating CSS positioning
@@ -1146,7 +1148,23 @@
     me.colourChart = tbody;
   }
 
+  LodLive.prototype.createColourSelector = function() {
+    var me = this;
+    me.colourPicker = ColorPicker(
+      document.getElementById('slider'), 
+      document.getElementById('picker'), 
 
+      function(hex, hsv, rgb, pickerCoordinate, sliderCoordinate) {
+        me.selectedColourClick.style.background = hex;
+//                        document.getElementById('slider-wrapper').classList.add('invisible');
+//                        document.getElementById('picker-wrapper').classList.add('invisible');
+
+      }
+    );
+    document.getElementById("colour-click-button").onclick = function() {
+      document.getElementById('colour-picker-complete').classList.add('invisible');
+    };
+  }
   LodLive.prototype.addColourToChart = function(newUris) {
     var cc = this.colourChart;
     var me = this;
@@ -1178,6 +1196,10 @@
       //colourClick.style.backgroundColor = "red";
       var colourStyle = "background: " + me.colourForProperty[uri] + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;";
       colourClick.setAttribute("style", colourStyle);
+      colourClick.onclick = function() {
+        me.selectedColourClick = this;
+        document.getElementById('colour-picker-complete').classList.remove('invisible');
+      };
       colourTd.appendChild(colourClick);
       var linkTd = document.createElement('td');
       links.forEach(function(link) {
