@@ -1161,6 +1161,9 @@
         document.querySelectorAll('[data-property="' + dp + '"][class~="relatedBox"]').forEach(function(node) {
             node.style.color = hex;
         });
+        document.querySelectorAll('[data-property="' + dp + '"][class~="groupedRelatedBox"]').forEach(function(node) {
+            node.style.color = hex;
+        });
 //                        document.getElementById('slider-wrapper').classList.add('invisible');
 //                        document.getElementById('picker-wrapper').classList.add('invisible');
 
