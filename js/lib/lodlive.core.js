@@ -151,6 +151,7 @@
     // TODO: do this in renderer.init()?
     this.renderer.msg('', 'init');
     this.createLozengeCheckbox();
+    this.colourToUris = {};
     this.createColourSelector();
     this.createColourChart();
   };
@@ -1156,6 +1157,10 @@
 
       function(hex, hsv, rgb, pickerCoordinate, sliderCoordinate) {
         me.selectedColourClick.style.background = hex;
+        var dp = me.selectedColourClick.getAttribute("data-property");
+        document.querySelectorAll('[data-property="' + dp + '"][class~="relatedBox"]').forEach(function(node) {
+            node.style.color = hex;
+        });
 //                        document.getElementById('slider-wrapper').classList.add('invisible');
 //                        document.getElementById('picker-wrapper').classList.add('invisible');
 
@@ -1169,6 +1174,7 @@
     var cc = this.colourChart;
     var me = this;
     newUris.forEach(function(uri) {
+      var currentUri = uri;
       var allAjaxCalls = [];
       uri.split('|').forEach(function(property) {
         var labelKey = property.trim();
@@ -1193,13 +1199,17 @@
         links.push(link);
       });
       var colourClick = document.createElement("span");
+      //colourClick.id= "colour-click-" + me.renderer.hashFunc(currentUri);
+      colourClick.setAttribute("data-property", currentUri);
       //colourClick.style.backgroundColor = "red";
-      var colourStyle = "background: " + me.colourForProperty[uri] + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;";
+      var colour = uri === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" ? "black" : "#369";
+      var colourStyle = "background: " +  colour + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;";
       colourClick.setAttribute("style", colourStyle);
       colourClick.onclick = function() {
         me.selectedColourClick = this;
         document.getElementById('colour-picker-complete').classList.remove('invisible');
       };
+      //me.colourToUris[] = currentUri;
       colourTd.appendChild(colourClick);
       var linkTd = document.createElement('td');
       links.forEach(function(link) {
