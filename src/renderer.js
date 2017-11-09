@@ -622,8 +622,8 @@ LodLiveRenderer.prototype.createPropertyGroup = function createPropertyGroup(pre
   .css(renderer.getRelationshipCSS(predicates))
   .css({
     'top':  (chordsList[counter][1] - 8) + 'px',
-    'left': (chordsList[counter][0] - 8) + 'px',
-    'color': renderer.colourForProperty[predicates]
+    'left': (chordsList[counter][0] - 8) + 'px'//,
+//    'color': renderer.colourForProperty[predicates]
   });
 
   if (isInverse) {
@@ -659,8 +659,8 @@ LodLiveRenderer.prototype.createGroupedRelatedBox = function createGroupedRelate
     display: 'none',
     position: 'absolute',
     top: (chordsListGrouped[innerCounter][1] - 8) + 'px',
-    left: (chordsListGrouped[innerCounter][0] - 8) + 'px',
-    'color': renderer.colourForProperty[predicates]
+    left: (chordsListGrouped[innerCounter][0] - 8) + 'px'//,
+//    'color': renderer.colourForProperty[predicates]
   });
 
   if (isInverse) {
@@ -683,8 +683,8 @@ LodLiveRenderer.prototype.createRelatedBox = function createRelatedBox(predicate
   .attr('title', predicates)
   .css({
     top: (chordsList[counter][1] - 8) + 'px',
-    left: (chordsList[counter][0] - 8) + 'px',
-    'color': renderer.colourForProperty[predicates]
+    left: (chordsList[counter][0] - 8) + 'px'//,
+//    'color': renderer.colourForProperty[predicates]
   });
 };
 
