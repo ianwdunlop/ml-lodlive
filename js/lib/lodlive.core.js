@@ -1194,7 +1194,23 @@
 
       Promise.all(allAjaxCalls).then(values => {
 
-      var tr = document.createElement("tr"); 
+      var tr = document.createElement("tr");
+      tr.onmouseover = function() {
+        document.querySelectorAll('.relatedBox[data-property="' + uri + '"]').forEach(function(node) {
+            // Next 3 lines requried to trigger animation again
+            node.style.animation = 'none';
+            node.offsetHeight; /* trigger reflow */
+            node.style.animation = null;
+            node.classList.add("pulser");
+        });
+        document.querySelectorAll('.groupedRelatedBox[data-property="' + uri + '"]').forEach(function(node) {
+            // Next 3 lines requried to trigger animation again
+            node.style.animation = 'none';
+            node.offsetHeight; /* trigger reflow */
+            node.style.animation = null;
+            node.classList.add("pulser");
+        });
+      };
       tr.classList.add("colour-chart-row");
 //    checkbox.onclick = function() {
 //      me.changeToLozengeView();
