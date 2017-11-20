@@ -232,6 +232,12 @@
         pos
       );
 
+      Array.from(newObj.children()).forEach(function(child) {
+        if(child.classList.contains("sprite")) {
+            // TODO by property at the moment - maybe should be be class?
+            child.style.backgroundColor = inst.colourForProperty[propertyName];
+        }
+      });
       inst.context.append(newObj);
       // FIXME: eliminate inline CSS where possible
       newObj.css({
@@ -863,14 +869,12 @@
     var newUris = [];
     Object.keys(propertyGroup).forEach(function(uri) {
       if (!Object.keys(inst.colourForProperty).includes(uri)) {
-         inst.colourForProperty[uri] = inst.colours[utils.getRandomInt(0,16)];
          newUris.push(uri);
       }
     });
 
     Object.keys(propertyGroupInverted).forEach(function(uri) {
       if (!Object.keys(inst.colourForProperty).includes(uri)) {
-         inst.colourForProperty[uri] = inst.colours[utils.getRandomInt(0,16)];
          newUris.push(uri);
       }
     });
@@ -1161,6 +1165,7 @@
       function(hex, hsv, rgb, pickerCoordinate, sliderCoordinate) {
         me.selectedColourClick.style.background = hex;
         var dp = me.selectedColourClick.getAttribute("data-property");
+        me.colourForProperty[dp] = hex;
         document.querySelectorAll('[data-property="' + dp + '"][class~="relatedBox"]').forEach(function(node) {
             node.style.color = hex;
         });
@@ -1210,6 +1215,7 @@
       colourClick.setAttribute("title", "Click to change colour");
       //colourClick.style.backgroundColor = "red";
       var colour = uri === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" ? "black" : "#369";
+      me.colourForProperty[uri] = colour;
       var colourStyle = "background: " +  colour + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;cursor: pointer";
       colourClick.setAttribute("style", colourStyle);
       colourClick.onclick = function() {
