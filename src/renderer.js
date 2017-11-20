@@ -640,7 +640,9 @@ LodLiveRenderer.prototype.createPropertyGroup = function createPropertyGroup(pre
       }
     });
   }
-
+  box.onclick = function() {
+    console.log(this.getAttribute("data-property"));
+  };
   return box;
 };
 

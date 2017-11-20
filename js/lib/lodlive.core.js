@@ -1151,6 +1151,9 @@
 
   LodLive.prototype.createColourSelector = function() {
     var me = this;
+    if (document.getElementById('slider') == null && document.getElementById('picker') == null) {
+      return;
+    }
     me.colourPicker = ColorPicker(
       document.getElementById('slider'), 
       document.getElementById('picker'), 
@@ -1206,7 +1209,7 @@
       colourClick.setAttribute("data-property", currentUri);
       //colourClick.style.backgroundColor = "red";
       var colour = uri === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" ? "black" : "#369";
-      var colourStyle = "background: " +  colour + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;";
+      var colourStyle = "background: " +  colour + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;cursor: pointer";
       colourClick.setAttribute("style", colourStyle);
       colourClick.onclick = function() {
         me.selectedColourClick = this;
