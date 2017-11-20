@@ -1207,6 +1207,7 @@
       var colourClick = document.createElement("span");
       //colourClick.id= "colour-click-" + me.renderer.hashFunc(currentUri);
       colourClick.setAttribute("data-property", currentUri);
+      colourClick.setAttribute("title", "Click to change colour");
       //colourClick.style.backgroundColor = "red";
       var colour = uri === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" ? "black" : "#369";
       var colourStyle = "background: " +  colour + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;cursor: pointer";
