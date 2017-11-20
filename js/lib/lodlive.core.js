@@ -878,6 +878,7 @@
          newUris.push(uri);
       }
     });
+    newUris = [...new Set(newUris)];
     inst.renderer.colourForProperty = inst.colourForProperty;
     inst.addColourToChart(newUris);
  
@@ -1201,7 +1202,10 @@
             node.style.animation = 'none';
             node.offsetHeight; /* trigger reflow */
             node.style.animation = null;
-            node.classList.add("pulser");
+            // If node is hidden then don't animate
+            if(node.parentElement!= null && node.parentElement.style.display != "none" || node.parentElement.style.opacity == "0.3") {
+              node.classList.add("pulser");
+            }
         });
         document.querySelectorAll('.groupedRelatedBox[data-property="' + uri + '"]').forEach(function(node) {
             // Next 3 lines requried to trigger animation again
