@@ -1202,9 +1202,10 @@
             node.style.animation = 'none';
             node.offsetHeight; /* trigger reflow */
             node.style.animation = null;
+            node.classList.remove("pulser");
             // If node is hidden then don't animate
-            if(node.parentElement!= null && node.parentElement.style.display != "none" || node.parentElement.style.opacity == "0.3") {
-              node.classList.add("pulser");
+            if(node.style.display != "none") {
+                node.classList.add("pulser");
             }
         });
         document.querySelectorAll('.groupedRelatedBox[data-property="' + uri + '"]').forEach(function(node) {
@@ -1212,7 +1213,10 @@
             node.style.animation = 'none';
             node.offsetHeight; /* trigger reflow */
             node.style.animation = null;
-            node.classList.add("pulser");
+            node.classList.remove("pulser");
+            if (node.style.opacity != "0.3") {
+                node.classList.add("pulser");
+            }
         });
       };
       tr.classList.add("colour-chart-row");
