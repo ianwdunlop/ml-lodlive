@@ -1182,6 +1182,23 @@
       document.getElementById('colour-picker-complete').classList.add('invisible');
     };
   }
+
+  LodLive.prototype.whichTransitionEvent = function(el) {
+    var t;
+    var transitions = {
+      'transition':'animationend',
+      'OTransition':'oAnimationEnd',
+      'MozTransition':'animationend',
+      'WebkitTransition':'webkitAnimationEnd'
+    }
+
+    for(t in transitions){
+        if( el.style[t] !== undefined ){
+            return transitions[t];
+        }
+    }
+}
+
   LodLive.prototype.addColourToChart = function(newUris) {
     var cc = this.colourChart;
     var me = this;
@@ -1196,16 +1213,25 @@
       Promise.all(allAjaxCalls).then(values => {
 
       var tr = document.createElement("tr");
-      tr.onmouseover = function() {
+      var pulse = document.createElement("span");
+      pulse.classList.add("glyphicon", "glyphicon-play-circle", "small-padding-left", "show-pulse");
+      pulse.setAttribute("title", "Highlight nodes with this property");
+      pulse.onmouseover = function() {
         document.querySelectorAll('.relatedBox[data-property="' + uri + '"]').forEach(function(node) {
             // Next 3 lines requried to trigger animation again
             node.style.animation = 'none';
             node.offsetHeight; /* trigger reflow */
             node.style.animation = null;
+            // Probably already removed due to transition callback - but just in case
             node.classList.remove("pulser");
             // If node is hidden then don't animate
-            if(node.style.display != "none") {
+            if(node.style.display != "none" && node.parentElement.style.display != "none") {
                 node.classList.add("pulser");
+                // Remove class after end of animation
+                node.addEventListener(me.whichTransitionEvent(node), function(event) {
+                    event.target.classList.remove('pulser');
+                });
+
             }
         });
         document.querySelectorAll('.groupedRelatedBox[data-property="' + uri + '"]').forEach(function(node) {
@@ -1214,8 +1240,11 @@
             node.offsetHeight; /* trigger reflow */
             node.style.animation = null;
             node.classList.remove("pulser");
-            if (node.style.opacity != "0.3") {
+            if (node.style.opacity != "0.3" && node.parentElement.style.display != "none") {
                 node.classList.add("pulser");
+                node.addEventListener(me.whichTransitionEvent(node), function(event) {
+                   event.target.classList.remove('pulser');
+                });
             }
         });
       };
@@ -1249,6 +1278,7 @@
       //me.colourToUris[] = currentUri;
       colourTd.appendChild(colourClick);
       var linkTd = document.createElement('td');
+      linkTd.appendChild(pulse);
       links.forEach(function(link) {
         linkTd.appendChild(link);
       });
