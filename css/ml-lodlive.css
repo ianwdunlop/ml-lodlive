@@ -224,3 +224,7 @@
 .pulser {
     animation: pulse 1s ease-in-out;
 }
+.show-pulse:hover {
+    color: red;
+    cursor: pointer;
+}
