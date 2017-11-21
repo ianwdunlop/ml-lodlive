@@ -885,7 +885,7 @@
     // iterate over connectedDocs and invertedDocs, creating DOM nodes and calculating CSS positioning
     var connectedNodes = inst.renderer.createPropertyBoxes(connectedDocs, propertyGroup, containerBox, chordsList, chordsListGrouped, false);
     // Need to start inverted nodes at end of connectedNodes
-    var invertedNodes = inst.renderer.createPropertyBoxes(invertedDocs, propertyGroupInverted, containerBox, chordsList, chordsListGrouped, true, connectedNodes.objectList.length + 1);
+    var invertedNodes = inst.renderer.createPropertyBoxes(invertedDocs, propertyGroupInverted, containerBox, chordsList, chordsListGrouped, true, connectedNodes.objectList.length % 14 + 1);
 
     // aggiungo al box i link ai documenti correlati
     var objectList = connectedNodes.objectList.concat(invertedNodes.objectList);
