@@ -1,5 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-/*
+ /*
  *
  * lodLive 1.0
  * is developed by Diego Valerio Camarda, Silvia Mazzini and Alessandro Antonuccio
@@ -42,7 +42,8 @@
     var profile = this.options = options;
     this.uriToLabels = {};
     this.debugOn = options.debugOn && window.console; // don't debug if there is no console
-
+    this.colours = ['salmon', 'crimson', 'red', 'deeppink', 'gold', 'moccasin', 'darkkhaki', 'slateblue', 'lime', 'green', 'aqua', 'midnightblue', 'rosybrown', 'gray', 'tan'];
+    this.colourForProperty = {};
     // allow them to override the docInfo function
     if (profile.UI.docInfo) {
       this.docInfo = profile.UI.docInfo;
@@ -145,11 +146,15 @@
     };
 
     var firstBox = this.renderer.firstBox(firstUri);
+    this.initialNode = firstBox;
     this.openDoc(firstUri, firstBox);
 
     // TODO: do this in renderer.init()?
     this.renderer.msg('', 'init');
     this.createLozengeCheckbox();
+    this.colourToUris = {};
+    this.createColourSelector();
+    this.createColourChart();
   };
 
   LodLive.prototype.autoExpand = function() {
@@ -183,12 +188,18 @@
 
     if (!isInverse) {
       // TODO: add explaination for early return
-      if (inst.refs.getObjectRefs(circleId).indexOf(aId) > -1) {
+      if (inst.refs.getObjectRefs(circleId).indexOf(aId.toString()) > -1) {
         return;
       }
 
       inst.refs.addObjectRef(circleId, aId);
-      inst.refs.addSubjectRef(aId, circleId);
+      inst.refs.addSubjectRef(aId, circleId.toString());
+    } else {
+      if (inst.refs.getObjectRefs(aId).indexOf(circleId.toString()) > -1) {
+        return;
+      }
+      inst.refs.addSubjectRef(circleId.toString(), Number.parseInt(aId));
+      inst.refs.addObjectRef(Number.parseInt(aId), circleId.toString());
     }
 
     var newObj = inst.context.find('#' + aId);
@@ -222,6 +233,12 @@
         pos
       );
 
+      Array.from(newObj.children()).forEach(function(child) {
+        if(child.classList.contains("sprite")) {
+            // TODO by property at the moment - maybe should be be class?
+            child.style.backgroundColor = inst.colourForProperty[propertyName];
+        }
+      });
       inst.context.append(newObj);
       // FIXME: eliminate inline CSS where possible
       newObj.css({
@@ -238,14 +255,19 @@
       inst.openDoc(rel, newObj, fromInverse);
     }
 
-    if (!isInverse) {
       var allAjaxCalls = [];
       propertyName.split('|').forEach(function(property) {
         var labelKey = property.trim();
         allAjaxCalls.push(inst.generateLabelAjaxCall(labelKey));
       });
+
+    if (!isInverse) {
       Promise.all(allAjaxCalls).then(values => {
         inst.renderer.drawLine(originalCircle, newObj, null, propertyName, inst.uriToLabels);
+      });
+    } else {
+      Promise.all(allAjaxCalls).then(values => {
+        inst.renderer.drawLine(newObj, originalCircle, null, propertyName, inst.uriToLabels);
       });
     }
   };
@@ -264,7 +286,7 @@
 
     var id = obj.attr('id');
 
-    inst.renderer.clearLines(id);
+    inst.renderer.clearLines();
 
     // get subjects where id is the object
     var subjectIds = inst.refs.getSubjectRefs(id);
@@ -281,12 +303,33 @@
     });
 
     // get all pairs, excluding self
-    var pairs = inst.renderer.getRelatedNodePairs(id, true);
-    inst.renderer.drawLines(pairs);
+    //var pairs = inst.renderer.getRelatedNodePairs(id, true);
+    //inst.renderer.drawLines(pairs);
 
     // remove references from id
     inst.refs.removeAsSubject(id);
     inst.refs.removeAsObject(id);
+    var nodes = [];
+    if (Object.keys(inst.renderer.refs.storeIds).length === 0) {
+      return;
+    }
+    Object.keys(inst.renderer.refs.storeIds).forEach(function(key) {
+      var refs = inst.renderer.refs.storeIds[key];
+      refs.forEach(function(ref) {
+        var contains = false;
+        var newNode = {"from": key.slice(3), "to": ref};
+        nodes.forEach(function(node) {
+            if(!contains && JSON.stringify(node) === JSON.stringify(newNode)) {
+              contains = true;
+            }
+        });
+        if (!contains) {
+          nodes.push({"from": key.slice(3), "to": ref});
+        }
+      });
+    });
+
+    inst.renderer.drawLines(nodes); 
 
     // Image rendering has been disabled; keeping for posterity ...
     // var cp = inst.context.find('.lodLiveControlPanel');
@@ -649,6 +692,14 @@
       }
     });
 
+    //  Annoying edge case. Found examples where comment used when it should have been label.
+    if(titlePieces.length === 0) {
+      var titleValues = inst.getJsonValue(values, "http://www.w3.org/2000/01/rdf-schema#comment", "http://www.w3.org/2000/01/rdf-schema#comment");
+      titleValues.forEach(function(titleValue) {
+        titlePieces.push(titleValue);
+      });    
+    }
+
     var title = titlePieces
     // deduplicate
     .filter(function(value, index, self) {
@@ -815,10 +866,27 @@
     var chordsList = utils.circleChords(75, 24, destBox.position().left + 65, destBox.position().top + 65);
     var chordsListGrouped = utils.circleChords(95, 36, destBox.position().left + 65, destBox.position().top + 65);
 
+    // Assign colours to uris.
+    var newUris = [];
+    Object.keys(propertyGroup).forEach(function(uri) {
+      if (!Object.keys(inst.colourForProperty).includes(uri)) {
+         newUris.push(uri);
+      }
+    });
+
+    Object.keys(propertyGroupInverted).forEach(function(uri) {
+      if (!Object.keys(inst.colourForProperty).includes(uri)) {
+         newUris.push(uri);
+      }
+    });
+    newUris = [...new Set(newUris)];
+    inst.renderer.colourForProperty = inst.colourForProperty;
+    inst.addColourToChart(newUris);
+ 
     // iterate over connectedDocs and invertedDocs, creating DOM nodes and calculating CSS positioning
     var connectedNodes = inst.renderer.createPropertyBoxes(connectedDocs, propertyGroup, containerBox, chordsList, chordsListGrouped, false);
     // Need to start inverted nodes at end of connectedNodes
-    var invertedNodes = inst.renderer.createPropertyBoxes(invertedDocs, propertyGroupInverted, containerBox, chordsList, chordsListGrouped, true, connectedNodes.objectList.length + 1);
+    var invertedNodes = inst.renderer.createPropertyBoxes(invertedDocs, propertyGroupInverted, containerBox, chordsList, chordsListGrouped, true, connectedNodes.objectList.length % 14 + 1);
 
     // aggiungo al box i link ai documenti correlati
     var objectList = connectedNodes.objectList.concat(invertedNodes.objectList);
@@ -849,6 +917,21 @@
     var inverses = [];
 
     function callback(info) {
+      // Assign colours to uris.
+//      var newUris = [];
+//      info.uris.forEach(function(uri) {
+//        if (!Object.keys(inst.colourForProperty).includes(Object.keys(uri)[0])) {
+//           inst.colourForProperty[Object.keys(uri)[0]] = inst.colours[utils.getRandomInt(0,16)];
+//           newUris.push(Object.keys(uri)[0]);
+//        }
+//      });
+//      inverses.forEach(function(uri) {
+//        if (!Object.keys(inst.colourForProperty).includes(Object.keys(uri)[0])) {
+//           inst.colourForProperty[Object.keys(uri)[0]] = inst.colours[utils.getRandomInt(0,16)];
+//           newUris.push(Object.keys(uri)[0]);
+//        }
+//      });
+//      inst.addColourToChart(newUris);
       inst.format(destBox.children('.box'), info.values, info.uris, inverses);
 
       if (fromInverse && fromInverse.length) {
@@ -1013,8 +1096,10 @@
     label.appendChild(document.createTextNode('Change view'));
     div.appendChild(checkbox);
     div.appendChild(label);
-    var nav = document.getElementById("navbar");
-    document.body.insertBefore(div, nav.nextSibling); 
+    var ld = document.getElementById("lozenge-div");
+    if (ld != null) {
+      ld.appendChild(div);
+    }
   }
 
   LodLive.prototype.changeToLozengeView = function() {
@@ -1022,9 +1107,195 @@
           element.style.height = "60px";
           element.style.borderRadius = "20px";
       });
-      var target = document.getElementById("-2045223458");
+      Array.from(document.getElementsByClassName('relatedBox')).forEach(function(element) {
+          element.style.visibility = "hidden";
+      });
+      Array.from(document.getElementsByClassName('groupedRelatedBox')).forEach(function(element) {
+          element.style.visibility = "hidden";
+      });
+      Array.from(document.getElementsByClassName('pageNext')).forEach(function(element) {
+          element.style.visibility = "hidden";
+      });
+      Array.from(document.getElementsByClassName('actionBox')).forEach(function(element) {
+          element.style.top = "-9px";
+      });
+      var target = this.initialNode[0];
       this.renderer.reDrawLines($(target));
   }
+
+  LodLive.prototype.createColourChart = function() {
+    var me = this;
+    ///var div = document.createElement("div"); 
+    //div.classList.add("colour-chart");
+    var table = document.createElement("table");
+    table.id = "colour-chart-table";
+    table.classList.add("colour-chart-table");
+//    checkbox.onclick = function() {
+//      me.changeToLozengeView();
+//    };
+    var thead = document.createElement('thead');
+    var trow = document.createElement('tr')
+    var propertyColumn =  document.createElement('th');
+    propertyColumn.appendChild(document.createTextNode('Property'));
+    var colourColumn = document.createElement('th');
+    colourColumn.appendChild(document.createTextNode('Colour'));
+    trow.appendChild(colourColumn);
+    trow.appendChild(propertyColumn);
+    thead.appendChild(trow);
+    var tbody = document.createElement('tbody');
+    //table.appendChild(thead);
+    table.appendChild(tbody);
+    //div.appendChild(label);
+    //div.appendChild(ul);
+    var cc = document.getElementById("colour-chart");
+    var title = document.createElement("h4");
+    title.classList.add("center");
+    title.innerHTML = "Property Groups";
+    var div = document.createElement("div");
+    div.appendChild(title);
+    div.appendChild(table);
+    if (cc != null) {
+      cc.appendChild(div);
+    }
+    // Renderer can update the list when a new uri type gets added
+    me.colourChart = tbody;
+  }
+
+  LodLive.prototype.createColourSelector = function() {
+    var me = this;
+    if (document.getElementById('slider') == null && document.getElementById('picker') == null) {
+      return;
+    }
+    me.colourPicker = ColorPicker(
+      document.getElementById('slider'), 
+      document.getElementById('picker'), 
+
+      function(hex, hsv, rgb, pickerCoordinate, sliderCoordinate) {
+        me.selectedColourClick.style.background = hex;
+        var dp = me.selectedColourClick.getAttribute("data-property");
+        me.colourForProperty[dp] = hex;
+        document.querySelectorAll('[data-property="' + dp + '"][class~="relatedBox"]').forEach(function(node) {
+            node.style.color = hex;
+        });
+        document.querySelectorAll('[data-property="' + dp + '"][class~="groupedRelatedBox"]').forEach(function(node) {
+            node.style.color = hex;
+        });
+//                        document.getElementById('slider-wrapper').classList.add('invisible');
+//                        document.getElementById('picker-wrapper').classList.add('invisible');
+
+      }
+    );
+    document.getElementById("colour-click-button").onclick = function() {
+      document.getElementById('colour-picker-complete').classList.add('invisible');
+    };
+  }
+
+  LodLive.prototype.whichTransitionEvent = function(el) {
+    var t;
+    var transitions = {
+      'transition':'animationend',
+      'OTransition':'oAnimationEnd',
+      'MozTransition':'animationend',
+      'WebkitTransition':'webkitAnimationEnd'
+    }
+
+    for(t in transitions){
+        if( el.style[t] !== undefined ){
+            return transitions[t];
+        }
+    }
+}
+
+  LodLive.prototype.addColourToChart = function(newUris) {
+    var cc = this.colourChart;
+    var me = this;
+    newUris.forEach(function(uri) {
+      var currentUri = uri;
+      var allAjaxCalls = [];
+      uri.split('|').forEach(function(property) {
+        var labelKey = property.trim();
+        allAjaxCalls.push(me.generateLabelAjaxCall(labelKey));
+      });
+
+      Promise.all(allAjaxCalls).then(values => {
+
+      var tr = document.createElement("tr");
+      var pulse = document.createElement("span");
+      pulse.classList.add("glyphicon", "glyphicon-play-circle", "small-padding-right", "small-padding-left", "show-pulse");
+      pulse.setAttribute("title", "Click to highlight nodes with this property");
+      pulse.onclick = function() {
+        document.querySelectorAll('.relatedBox[data-property="' + uri + '"]').forEach(function(node) {
+            // Next 3 lines requried to trigger animation again
+            node.style.animation = 'none';
+            node.offsetHeight; /* trigger reflow */
+            node.style.animation = null;
+            // Probably already removed due to transition callback - but just in case
+            node.classList.remove("pulser");
+            // If node is hidden then don't animate
+            if(node.style.display != "none" && node.parentElement.style.display != "none") {
+                node.classList.add("pulser");
+                // Remove class after end of animation
+                node.addEventListener(me.whichTransitionEvent(node), function(event) {
+                    event.target.classList.remove('pulser');
+                });
+
+            }
+        });
+        document.querySelectorAll('.groupedRelatedBox[data-property="' + uri + '"]').forEach(function(node) {
+            // Next 3 lines requried to trigger animation again
+            node.style.animation = 'none';
+            node.offsetHeight; /* trigger reflow */
+            node.style.animation = null;
+            node.classList.remove("pulser");
+            if (node.style.opacity != "0.3" && node.parentElement.style.display != "none") {
+                node.classList.add("pulser");
+                node.addEventListener(me.whichTransitionEvent(node), function(event) {
+                   event.target.classList.remove('pulser');
+                });
+            }
+        });
+      };
+      tr.classList.add("colour-chart-row");
+//    checkbox.onclick = function() {
+//      me.changeToLozengeView();
+//     };
+      var linkTd = document.createElement('td');
+      var colourTd = document.createElement('td');
+      var links = [];
+      uri.split("|").forEach(function(splitUri) {
+        var link = document.createElement("a");
+        link.classList.add("small-padding-left");
+        link.href = splitUri.trim();
+        link.innerHTML = me.uriToLabels[splitUri.trim()];
+        links.push(link);
+      });
+      var colourClick = document.createElement("span");
+      //colourClick.id= "colour-click-" + me.renderer.hashFunc(currentUri);
+      colourClick.setAttribute("data-property", currentUri);
+      colourClick.setAttribute("title", "Click to change colour");
+      //colourClick.style.backgroundColor = "red";
+      var colour = uri === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" ? "black" : "#369";
+      me.colourForProperty[uri] = colour;
+      var colourStyle = "background: " +  colour + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;cursor: pointer";
+      colourClick.setAttribute("style", colourStyle);
+      colourClick.onclick = function() {
+        me.selectedColourClick = this;
+        document.getElementById('colour-picker-complete').classList.remove('invisible');
+      };
+      //me.colourToUris[] = currentUri;
+      colourTd.appendChild(colourClick);
+      var linkTd = document.createElement('td');
+      linkTd.appendChild(pulse);
+      links.forEach(function(link) {
+        linkTd.appendChild(link);
+      });
+      tr.appendChild(colourTd);
+      tr.appendChild(linkTd);
+      cc.appendChild(tr);
+    });
+      });
+  }
+
 
   //TODO: these line drawing methods don't care about the instance, they should live somewhere else
 
@@ -1461,6 +1732,7 @@ function LodLiveRenderer(options) {
   this.tools = options.tools;
   this.nodeIcons = options.nodeIcons;
   this.relationships = options.relationships;
+  this.colourForProperty = {};
 }
 
 /**
@@ -1516,7 +1788,24 @@ LodLiveRenderer.prototype.firstBox = function(firstUri) {
   })
   .animate({ opacity: 1}, 1000);
 
-  renderer.context.append(aBox);
+  ctx.append(aBox);
+
+  // create single canvas for line drawing
+  var canvas = $('<canvas></canvas>')
+  .attr('height', ctx.height())
+  .attr('width', ctx.width())
+  .attr('id', 'lodlive-canvas')
+  .css({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: '0'
+  });
+
+  canvas.data().lines = {};
+
+  ctx.append(canvas);
+  renderer.canvas = canvas;
 
   return aBox;
 };
@@ -1582,15 +1871,32 @@ LodLiveRenderer.prototype.generateTools = function(container, obj, inst) {
 LodLiveRenderer.prototype.reDrawLines = function(target) {
   var renderer = this;
   var id = target.attr('id');
-  var nodes = renderer.getRelatedNodePairs(id);
+//  var nodes = renderer.getRelatedNodePairs(id);
 
-  if (!nodes || !nodes.length) return;
-
-  var canvases = renderer.getRelatedCanvases(id);
+//  if (!nodes || !nodes.length) return;
+  var nodes = [];
+  if (Object.keys(renderer.refs.storeIds).length === 0) {
+    return;
+  }
+  Object.keys(renderer.refs.storeIds).forEach(function(key) {
+    var refs = renderer.refs.storeIds[key];
+    refs.forEach(function(ref) {
+      var contains = false;
+      var newNode = {"from": key.slice(3), "to": ref};
+      nodes.forEach(function(node) {
+          if(!contains && JSON.stringify(node) === JSON.stringify(newNode)) {
+            contains = true;
+          }
+      });
+      if (!contains) {
+        nodes.push({"from": key.slice(3), "to": ref});
+      }
+    });
+  }); 
+//  var canvases = renderer.getRelatedCanvases(id);
   var shouldContinue = true;
-
   function draw() {
-    renderer.clearLines(canvases);
+    renderer.clearLines();
     renderer.drawLines(nodes);
 
     if (shouldContinue) {
@@ -1909,7 +2215,9 @@ LodLiveRenderer.prototype.createPropertyBoxes = function createPropertyBoxes(inp
   inputArray.forEach(function(value, i) {
     // TODO: refactor; modular arithmetic for CSS positioning
     // counter appears to equal the count of groupedProperties mod 14 plus 1 or 2
-    if (counter === 15) {
+    // TODO this was === 15 but found situation where it skipped past it.
+    // This part all needs reworked!
+    if (counter >= 15) {
       counter = 1;
     }
 
@@ -1967,7 +2275,8 @@ LodLiveRenderer.prototype.createPropertyGroup = function createPropertyGroup(pre
   .css(renderer.getRelationshipCSS(predicates))
   .css({
     'top':  (chordsList[counter][1] - 8) + 'px',
-    'left': (chordsList[counter][0] - 8) + 'px'
+    'left': (chordsList[counter][0] - 8) + 'px'//,
+//    'color': renderer.colourForProperty[predicates]
   });
 
   if (isInverse) {
@@ -1984,7 +2293,9 @@ LodLiveRenderer.prototype.createPropertyGroup = function createPropertyGroup(pre
       }
     });
   }
-
+  box.onclick = function() {
+    console.log(this.getAttribute("data-property"));
+  };
   return box;
 };
 
@@ -1992,6 +2303,7 @@ LodLiveRenderer.prototype.createPropertyGroup = function createPropertyGroup(pre
  * create a node to represent a property in a group of related properties
  */
 LodLiveRenderer.prototype.createGroupedRelatedBox = function createGroupedRelatedBox(predicates, object, containerBox, chordsListGrouped, innerCounter, isInverse) {
+  var renderer = this;
   var box = this._createRelatedBox(predicates, object, containerBox, isInverse)
   // this class is probably unnecessary now...
   .addClass('aGrouped')
@@ -2002,7 +2314,8 @@ LodLiveRenderer.prototype.createGroupedRelatedBox = function createGroupedRelate
     display: 'none',
     position: 'absolute',
     top: (chordsListGrouped[innerCounter][1] - 8) + 'px',
-    left: (chordsListGrouped[innerCounter][0] - 8) + 'px'
+    left: (chordsListGrouped[innerCounter][0] - 8) + 'px'//,
+//    'color': renderer.colourForProperty[predicates]
   });
 
   if (isInverse) {
@@ -2018,13 +2331,15 @@ LodLiveRenderer.prototype.createGroupedRelatedBox = function createGroupedRelate
  * create a node to represent a related property
  */
 LodLiveRenderer.prototype.createRelatedBox = function createRelatedBox(predicates, object, containerBox, chordsList, counter, isInverse) {
+  var renderer = this;
   return this._createRelatedBox(predicates, object, containerBox, isInverse)
   .attr('data-circlePos', counter)
   .attr('data-circleParts', 24)
   .attr('title', predicates)
   .css({
     top: (chordsList[counter][1] - 8) + 'px',
-    left: (chordsList[counter][0] - 8) + 'px'
+    left: (chordsList[counter][0] - 8) + 'px'//,
+//    'color': renderer.colourForProperty[predicates]
   });
 };
 
@@ -2144,17 +2459,18 @@ LodLiveRenderer.prototype.getRelatedCanvases = function(id) {
  * @param {Array<Object>} [canvases] - an array of canvas objects
  */
 LodLiveRenderer.prototype.clearLines = function(arg) {
-  var canvases;
-
-  if (Array.isArray(arg)) {
-    canvases = arg;
-  } else {
-    canvases = this.getRelatedCanvases(arg);
-  }
-
-  canvases.forEach(function(canvas) {
-    canvas.clearCanvas();
-  });
+  this.canvas.clearCanvas();
+//  var canvases;
+//
+//  if (Array.isArray(arg)) {
+//    canvases = arg;
+//  } else {
+//    canvases = this.getRelatedCanvases(arg);
+//  }
+//
+//  canvases.forEach(function(canvas) {
+//    canvas.clearCanvas();
+//  });
 };
 
 /**
@@ -2172,9 +2488,10 @@ LodLiveRenderer.prototype.getRelatedNodePairs = function(id, excludeSelf) {
 
   // get objects where id is the subject
   var objectIds = renderer.refs.getObjectRefs(id)
-
+  objectIds = Array.from(new Set(objectIds));
   // get subjects where id is the object
   var subjectIds = renderer.refs.getSubjectRefs(id);
+  subjectIds = Array.from(new Set(subjectIds));
 
   if (!excludeSelf) {
     node = renderer.context.find('#' + id);
@@ -2216,18 +2533,17 @@ LodLiveRenderer.prototype.getRelatedNodePairs = function(id, excludeSelf) {
  * @param {String} [id] - the id of a subject or object node
  * @param {Array<Object>} [pairs] an array containing pairs of related nodes and their canvas
  */
-LodLiveRenderer.prototype.drawLines = function(arg) {
+LodLiveRenderer.prototype.drawLines = function(nodes) {
   var renderer = this;
-  var pairs;
+//  var pairs;
 
-  if (Array.isArray(arg)) {
-    pairs = arg;
-  } else {
-    pairs = renderer.getRelatedNodePairs(arg);
-  }
-
-  pairs.forEach(function(pair) {
-    renderer.drawLine(pair.from, pair.to, pair.canvas);
+//  if (Array.isArray(arg)) {
+//    pairs = arg;
+//  } else {
+//    pairs = renderer.getRelatedNodePairs(arg);
+//  }
+  nodes.forEach(function(pair) {
+    renderer.drawLine($(document.getElementById(pair.from)), $(document.getElementById(pair.to), renderer.canvas));
   });
 };
 
@@ -2245,45 +2561,57 @@ LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, ur
   var pos2 = to.position();
   var fromId = from.attr('id');
   var toId = to.attr('id');
+//  if (canvas == null && document.getElementById('line-' + fromId) !== null) {
+//    return
+//  }
+//  if (!canvas) {
+//    canvas = document.getElementById('line-' + fromId)
+//    if (canvas == null) {
+//      canvas = $('#line-' + fromId);
+//    }
+//  }
 
-  if (!canvas) {
-    canvas = $('#line-' + fromId);
+//  if (!canvas.length) {
+//    canvas = $('<canvas></canvas>')
+//    .attr('height', renderer.context.height())
+//    .attr('width', renderer.context.width())
+//    .attr('id', 'line-' + fromId)
+//    .css({
+//      position: 'absolute',
+//      top: 0,
+//      left: 0,
+//      zIndex: '0'
+//    });
+//
+//    canvas.data().lines = {};
+//
+//    renderer.context.append(canvas);
+//  }
+  if (canvas == null) {
+    canvas = renderer.canvas;
   }
 
-  if (!canvas.length) {
-    canvas = $('<canvas></canvas>')
-    .attr('height', renderer.context.height())
-    .attr('width', renderer.context.width())
-    .attr('id', 'line-' + fromId)
-    .css({
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      zIndex: '0'
-    });
-
-    canvas.data().lines = {};
-
-    renderer.context.append(canvas);
+  // TODO: just build the label directly, skip the fromId + '-' + data-propertyName-{ID} attribute
+  if (propertyName && !canvas.data('propertyName-' + fromId + '-'+ toId)) {
+    canvas.attr('data-propertyName-' + fromId + '-' + toId, propertyName);
   }
 
-  // TODO: just build the label directly, skip the data-propertyName-{ID} attribute
-  if (propertyName && !canvas.data('propertyName-' + toId)) {
-    canvas.attr('data-propertyName-' + toId, propertyName);
+  if (!canvas.data().lines[fromId + '-' + toId]) {
+    canvas.data().lines[fromId + '-' + toId] = {};
   }
 
-  if (!canvas.data().lines[toId]) {
-    canvas.data().lines[toId] = {};
-  }
-
-  var line = canvas.data().lines[toId];
+  var line = canvas.data().lines[fromId + '-' + toId];
 
   var lineStyle = line.lineStyle || 'standardLine';
   var label = line.label;
   var labelArray;
 
   if (!label) {
-    labelArray = canvas.attr('data-propertyName-' + toId).split(/\|/);
+    // Might not be a line between them, just an inverse
+    if (canvas.attr('data-propertyName-' + fromId + '-' + toId) == null) {
+      return;
+    }
+    labelArray = canvas.attr('data-propertyName-' + fromId + '-' + toId).split(/\|/);
 
     label = labelArray.map(function(labelPart) {
       labelPart = $.trim(labelPart);
@@ -2859,6 +3187,13 @@ function circleChords(radius, steps, centerX, centerY, breakAt, onlyElement) {
   return values;
 }
 
+// Thanks mozilla. https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
+}
+
 var LodLiveUtils = {
   registerTranslation: registerTranslation,
   setDefaultTranslation: setDefaultTranslation,
@@ -2866,7 +3201,8 @@ var LodLiveUtils = {
   breakLines: breakLines,
   hashFunc: hashFunc,
   shortenKey: shortenKey,
-  circleChords: circleChords
+  circleChords: circleChords,
+  getRandomInt: getRandomInt
 };
 
 module.exports = LodLiveUtils;
@@ -2876,6 +3212,452 @@ if (!window.LodLiveUtils) {
 }
 
 },{}]},{},[1]);
+
+/**
+ * ColorPicker - pure JavaScript color picker without using images, external CSS or 1px divs.
+ * Copyright © 2011 David Durman, All rights reserved.
+ */
+(function(window, document, undefined) {
+
+    var type = (window.SVGAngle || document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1") ? "SVG" : "VML"),
+        picker, slide, hueOffset = 15, svgNS = 'http://www.w3.org/2000/svg';
+
+    // This HTML snippet is inserted into the innerHTML property of the passed color picker element
+    // when the no-hassle call to ColorPicker() is used, i.e. ColorPicker(function(hex, hsv, rgb) { ... });
+    
+    var colorpickerHTMLSnippet = [
+        
+        '<div class="picker-wrapper">',
+                '<div class="picker"></div>',
+                '<div class="picker-indicator"></div>',
+        '</div>',
+        '<div class="slide-wrapper">',
+                '<div class="slide"></div>',
+                '<div class="slide-indicator"></div>',
+        '</div>'
+        
+    ].join('');
+
+    /**
+     * Return mouse position relative to the element el.
+     */
+    function mousePosition(evt) {
+        // IE:
+        if (window.event && window.event.contentOverflow !== undefined) {
+            return { x: window.event.offsetX, y: window.event.offsetY };
+        }
+        // Webkit:
+        if (evt.offsetX !== undefined && evt.offsetY !== undefined) {
+            return { x: evt.offsetX, y: evt.offsetY };
+        }
+        // Firefox:
+        var wrapper = evt.target.parentNode.parentNode;
+        return { x: evt.layerX - wrapper.offsetLeft, y: evt.layerY - wrapper.offsetTop };
+    }
+
+    /**
+     * Create SVG element.
+     */
+    function $(el, attrs, children) {
+        el = document.createElementNS(svgNS, el);
+        for (var key in attrs)
+            el.setAttribute(key, attrs[key]);
+        if (Object.prototype.toString.call(children) != '[object Array]') children = [children];
+        var i = 0, len = (children[0] && children.length) || 0;
+        for (; i < len; i++)
+            el.appendChild(children[i]);
+        return el;
+    }
+
+    /**
+     * Create slide and picker markup depending on the supported technology.
+     */
+    if (type == 'SVG') {
+
+        slide = $('svg', { xmlns: 'http://www.w3.org/2000/svg', version: '1.1', width: '100%', height: '100%' },
+                  [
+                      $('defs', {},
+                        $('linearGradient', { id: 'gradient-hsv', x1: '0%', y1: '100%', x2: '0%', y2: '0%'},
+                          [
+                              $('stop', { offset: '0%', 'stop-color': '#FF0000', 'stop-opacity': '1' }),
+                              $('stop', { offset: '13%', 'stop-color': '#FF00FF', 'stop-opacity': '1' }),
+                              $('stop', { offset: '25%', 'stop-color': '#8000FF', 'stop-opacity': '1' }),
+                              $('stop', { offset: '38%', 'stop-color': '#0040FF', 'stop-opacity': '1' }),
+                              $('stop', { offset: '50%', 'stop-color': '#00FFFF', 'stop-opacity': '1' }),
+                              $('stop', { offset: '63%', 'stop-color': '#00FF40', 'stop-opacity': '1' }),
+                              $('stop', { offset: '75%', 'stop-color': '#0BED00', 'stop-opacity': '1' }),
+                              $('stop', { offset: '88%', 'stop-color': '#FFFF00', 'stop-opacity': '1' }),
+                              $('stop', { offset: '100%', 'stop-color': '#FF0000', 'stop-opacity': '1' })
+                          ]
+                         )
+                       ),
+                      $('rect', { x: '0', y: '0', width: '100%', height: '100%', fill: 'url(#gradient-hsv)'})
+                  ]
+                 );
+
+        picker = $('svg', { xmlns: 'http://www.w3.org/2000/svg', version: '1.1', width: '100%', height: '100%' },
+                   [
+                       $('defs', {},
+                         [
+                             $('linearGradient', { id: 'gradient-black', x1: '0%', y1: '100%', x2: '0%', y2: '0%'},
+                               [
+                                   $('stop', { offset: '0%', 'stop-color': '#000000', 'stop-opacity': '1' }),
+                                   $('stop', { offset: '100%', 'stop-color': '#CC9A81', 'stop-opacity': '0' })
+                               ]
+                              ),
+                             $('linearGradient', { id: 'gradient-white', x1: '0%', y1: '100%', x2: '100%', y2: '100%'},
+                               [
+                                   $('stop', { offset: '0%', 'stop-color': '#FFFFFF', 'stop-opacity': '1' }),
+                                   $('stop', { offset: '100%', 'stop-color': '#CC9A81', 'stop-opacity': '0' })
+                               ]
+                              )
+                         ]
+                        ),
+                       $('rect', { x: '0', y: '0', width: '100%', height: '100%', fill: 'url(#gradient-white)'}),
+                       $('rect', { x: '0', y: '0', width: '100%', height: '100%', fill: 'url(#gradient-black)'})
+                   ]
+                  );
+
+    } else if (type == 'VML') {
+        slide = [
+            '<DIV style="position: relative; width: 100%; height: 100%">',
+            '<v:rect style="position: absolute; top: 0; left: 0; width: 100%; height: 100%" stroked="f" filled="t">',
+            '<v:fill type="gradient" method="none" angle="0" color="red" color2="red" colors="8519f fuchsia;.25 #8000ff;24903f #0040ff;.5 aqua;41287f #00ff40;.75 #0bed00;57671f yellow"></v:fill>',
+            '</v:rect>',
+            '</DIV>'
+        ].join('');
+
+        picker = [
+            '<DIV style="position: relative; width: 100%; height: 100%">',
+            '<v:rect style="position: absolute; left: -1px; top: -1px; width: 101%; height: 101%" stroked="f" filled="t">',
+            '<v:fill type="gradient" method="none" angle="270" color="#FFFFFF" opacity="100%" color2="#CC9A81" o:opacity2="0%"></v:fill>',
+            '</v:rect>',
+            '<v:rect style="position: absolute; left: 0px; top: 0px; width: 100%; height: 101%" stroked="f" filled="t">',
+            '<v:fill type="gradient" method="none" angle="0" color="#000000" opacity="100%" color2="#CC9A81" o:opacity2="0%"></v:fill>',
+            '</v:rect>',
+            '</DIV>'
+        ].join('');
+        
+        if (!document.namespaces['v'])
+            document.namespaces.add('v', 'urn:schemas-microsoft-com:vml', '#default#VML');
+    }
+
+    /**
+     * Convert HSV representation to RGB HEX string.
+     * Credits to http://www.raphaeljs.com
+     */
+    function hsv2rgb(hsv) {
+        var R, G, B, X, C;
+        var h = (hsv.h % 360) / 60;
+        
+        C = hsv.v * hsv.s;
+        X = C * (1 - Math.abs(h % 2 - 1));
+        R = G = B = hsv.v - C;
+
+        h = ~~h;
+        R += [C, X, 0, 0, X, C][h];
+        G += [X, C, C, X, 0, 0][h];
+        B += [0, 0, X, C, C, X][h];
+
+        var r = Math.floor(R * 255);
+        var g = Math.floor(G * 255);
+        var b = Math.floor(B * 255);
+        return { r: r, g: g, b: b, hex: "#" + (16777216 | b | (g << 8) | (r << 16)).toString(16).slice(1) };
+    }
+
+    /**
+     * Convert RGB representation to HSV.
+     * r, g, b can be either in <0,1> range or <0,255> range.
+     * Credits to http://www.raphaeljs.com
+     */
+    function rgb2hsv(rgb) {
+
+        var r = rgb.r;
+        var g = rgb.g;
+        var b = rgb.b;
+        
+        if (rgb.r > 1 || rgb.g > 1 || rgb.b > 1) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+        }
+
+        var H, S, V, C;
+        V = Math.max(r, g, b);
+        C = V - Math.min(r, g, b);
+        H = (C == 0 ? null :
+             V == r ? (g - b) / C + (g < b ? 6 : 0) :
+             V == g ? (b - r) / C + 2 :
+                      (r - g) / C + 4);
+        H = (H % 6) * 60;
+        S = C == 0 ? 0 : C / V;
+        return { h: H, s: S, v: V };
+    }
+
+    /**
+     * Return click event handler for the slider.
+     * Sets picker background color and calls ctx.callback if provided.
+     */  
+    function slideListener(ctx, slideElement, pickerElement) {
+        return function(evt) {
+            evt = evt || window.event;
+            var mouse = mousePosition(evt);
+            ctx.h = mouse.y / slideElement.offsetHeight * 360 + hueOffset;
+            var pickerColor = hsv2rgb({ h: ctx.h, s: 1, v: 1 });
+            var c = hsv2rgb({ h: ctx.h, s: ctx.s, v: ctx.v });
+            pickerElement.style.backgroundColor = pickerColor.hex;
+            ctx.callback && ctx.callback(c.hex, { h: ctx.h - hueOffset, s: ctx.s, v: ctx.v }, { r: c.r, g: c.g, b: c.b }, undefined, mouse);
+        }
+    };
+
+    /**
+     * Return click event handler for the picker.
+     * Calls ctx.callback if provided.
+     */  
+    function pickerListener(ctx, pickerElement) {
+        return function(evt) {
+            evt = evt || window.event;
+            var mouse = mousePosition(evt),
+                width = pickerElement.offsetWidth,            
+                height = pickerElement.offsetHeight;
+
+            ctx.s = mouse.x / width;
+            ctx.v = (height - mouse.y) / height;
+            var c = hsv2rgb(ctx);
+            ctx.callback && ctx.callback(c.hex, { h: ctx.h - hueOffset, s: ctx.s, v: ctx.v }, { r: c.r, g: c.g, b: c.b }, mouse);
+        }
+    };
+
+    var uniqID = 0;
+    
+    /**
+     * ColorPicker.
+     * @param {DOMElement} slideElement HSV slide element.
+     * @param {DOMElement} pickerElement HSV picker element.
+     * @param {Function} callback Called whenever the color is changed provided chosen color in RGB HEX format as the only argument.
+     */
+    function ColorPicker(slideElement, pickerElement, callback) {
+        
+        if (!(this instanceof ColorPicker)) return new ColorPicker(slideElement, pickerElement, callback);
+
+        this.h = 0;
+        this.s = 1;
+        this.v = 1;
+
+        if (!callback) {
+            // call of the form ColorPicker(element, funtion(hex, hsv, rgb) { ... }), i.e. the no-hassle call.
+
+            var element = slideElement;
+            element.innerHTML = colorpickerHTMLSnippet;
+            
+            this.slideElement = element.getElementsByClassName('slide')[0];
+            this.pickerElement = element.getElementsByClassName('picker')[0];
+            var slideIndicator = element.getElementsByClassName('slide-indicator')[0];
+            var pickerIndicator = element.getElementsByClassName('picker-indicator')[0];
+            
+            ColorPicker.fixIndicators(slideIndicator, pickerIndicator);
+
+            this.callback = function(hex, hsv, rgb, pickerCoordinate, slideCoordinate) {
+
+                ColorPicker.positionIndicators(slideIndicator, pickerIndicator, slideCoordinate, pickerCoordinate);
+                
+                pickerElement(hex, hsv, rgb);
+            };
+            
+        } else {
+        
+            this.callback = callback;
+            this.pickerElement = pickerElement;
+            this.slideElement = slideElement;
+        }
+
+        if (type == 'SVG') {
+
+            // Generate uniq IDs for linearGradients so that we don't have the same IDs within one document.
+            // Then reference those gradients in the associated rectangles.
+
+            var slideClone = slide.cloneNode(true);
+            var pickerClone = picker.cloneNode(true);
+            
+            var hsvGradient = slideClone.getElementsByTagName('linearGradient')[0];
+            
+            var hsvRect = slideClone.getElementsByTagName('rect')[0];
+            
+            hsvGradient.id = 'gradient-hsv-' + uniqID;
+            hsvRect.setAttribute('fill', 'url(#' + hsvGradient.id + ')');
+
+            var blackAndWhiteGradients = [pickerClone.getElementsByTagName('linearGradient')[0], pickerClone.getElementsByTagName('linearGradient')[1]];
+            var whiteAndBlackRects = pickerClone.getElementsByTagName('rect');
+            
+            blackAndWhiteGradients[0].id = 'gradient-black-' + uniqID;
+            blackAndWhiteGradients[1].id = 'gradient-white-' + uniqID;
+            
+            whiteAndBlackRects[0].setAttribute('fill', 'url(#' + blackAndWhiteGradients[1].id + ')');
+            whiteAndBlackRects[1].setAttribute('fill', 'url(#' + blackAndWhiteGradients[0].id + ')');
+
+            this.slideElement.appendChild(slideClone);
+            this.pickerElement.appendChild(pickerClone);
+
+            uniqID++;
+            
+        } else {
+            
+            this.slideElement.innerHTML = slide;
+            this.pickerElement.innerHTML = picker;            
+        }
+
+        addEventListener(this.slideElement, 'click', slideListener(this, this.slideElement, this.pickerElement));
+        addEventListener(this.pickerElement, 'click', pickerListener(this, this.pickerElement));
+
+        enableDragging(this, this.slideElement, slideListener(this, this.slideElement, this.pickerElement));
+        enableDragging(this, this.pickerElement, pickerListener(this, this.pickerElement));
+    };
+
+    function addEventListener(element, event, listener) {
+
+        if (element.attachEvent) {
+            
+            element.attachEvent('on' + event, listener);
+            
+        } else if (element.addEventListener) {
+
+            element.addEventListener(event, listener, false);
+        }
+    }
+
+   /**
+    * Enable drag&drop color selection.
+    * @param {object} ctx ColorPicker instance.
+    * @param {DOMElement} element HSV slide element or HSV picker element.
+    * @param {Function} listener Function that will be called whenever mouse is dragged over the element with event object as argument.
+    */
+    function enableDragging(ctx, element, listener) {
+        
+        var mousedown = false;
+
+        addEventListener(element, 'mousedown', function(evt) { mousedown = true;  });
+        addEventListener(element, 'mouseup',   function(evt) { mousedown = false;  });
+        addEventListener(element, 'mouseout',  function(evt) { mousedown = false;  });
+        addEventListener(element, 'mousemove', function(evt) {
+
+            if (mousedown) {
+                
+                listener(evt);
+            }
+        });
+    }
+
+
+    ColorPicker.hsv2rgb = function(hsv) {
+        var rgbHex = hsv2rgb(hsv);
+        delete rgbHex.hex;
+        return rgbHex;
+    };
+    
+    ColorPicker.hsv2hex = function(hsv) {
+        return hsv2rgb(hsv).hex;
+    };
+    
+    ColorPicker.rgb2hsv = rgb2hsv;
+
+    ColorPicker.rgb2hex = function(rgb) {
+        return hsv2rgb(rgb2hsv(rgb)).hex;
+    };
+    
+    ColorPicker.hex2hsv = function(hex) {
+        return rgb2hsv(ColorPicker.hex2rgb(hex));
+    };
+    
+    ColorPicker.hex2rgb = function(hex) {
+        return { r: parseInt(hex.substr(1, 2), 16), g: parseInt(hex.substr(3, 2), 16), b: parseInt(hex.substr(5, 2), 16) };
+    };
+
+    /**
+     * Sets color of the picker in hsv/rgb/hex format.
+     * @param {object} ctx ColorPicker instance.
+     * @param {object} hsv Object of the form: { h: <hue>, s: <saturation>, v: <value> }.
+     * @param {object} rgb Object of the form: { r: <red>, g: <green>, b: <blue> }.
+     * @param {string} hex String of the form: #RRGGBB.
+     */
+     function setColor(ctx, hsv, rgb, hex) {
+         ctx.h = hsv.h % 360;
+         ctx.s = hsv.s;
+         ctx.v = hsv.v;
+         
+         var c = hsv2rgb(ctx);
+         
+         var mouseSlide = {
+             y: (ctx.h * ctx.slideElement.offsetHeight) / 360,
+             x: 0    // not important
+         };
+         
+         var pickerHeight = ctx.pickerElement.offsetHeight;
+         
+         var mousePicker = {
+             x: ctx.s * ctx.pickerElement.offsetWidth,
+             y: pickerHeight - ctx.v * pickerHeight
+         };
+         
+         ctx.pickerElement.style.backgroundColor = hsv2rgb({ h: ctx.h, s: 1, v: 1 }).hex;
+         ctx.callback && ctx.callback(hex || c.hex, { h: ctx.h, s: ctx.s, v: ctx.v }, rgb || { r: c.r, g: c.g, b: c.b }, mousePicker, mouseSlide);
+         
+         return ctx;
+    };
+
+    /**
+     * Sets color of the picker in hsv format.
+     * @param {object} hsv Object of the form: { h: <hue>, s: <saturation>, v: <value> }.
+     */
+    ColorPicker.prototype.setHsv = function(hsv) {
+        return setColor(this, hsv);
+    };
+    
+    /**
+     * Sets color of the picker in rgb format.
+     * @param {object} rgb Object of the form: { r: <red>, g: <green>, b: <blue> }.
+     */
+    ColorPicker.prototype.setRgb = function(rgb) {
+        return setColor(this, rgb2hsv(rgb), rgb);
+    };
+
+    /**
+     * Sets color of the picker in hex format.
+     * @param {string} hex Hex color format #RRGGBB.
+     */
+    ColorPicker.prototype.setHex = function(hex) {
+        return setColor(this, ColorPicker.hex2hsv(hex), undefined, hex);
+    };
+
+    /**
+     * Helper to position indicators.
+     * @param {HTMLElement} slideIndicator DOM element representing the indicator of the slide area.
+     * @param {HTMLElement} pickerIndicator DOM element representing the indicator of the picker area.
+     * @param {object} mouseSlide Coordinates of the mouse cursor in the slide area.
+     * @param {object} mousePicker Coordinates of the mouse cursor in the picker area.
+     */
+    ColorPicker.positionIndicators = function(slideIndicator, pickerIndicator, mouseSlide, mousePicker) {
+        
+        if (mouseSlide) {
+            slideIndicator.style.top = (mouseSlide.y - slideIndicator.offsetHeight/2) + 'px';
+        }
+        if (mousePicker) {
+            pickerIndicator.style.top = (mousePicker.y - pickerIndicator.offsetHeight/2) + 'px';
+            pickerIndicator.style.left = (mousePicker.x - pickerIndicator.offsetWidth/2) + 'px';
+        } 
+    };
+
+    /**
+     * Helper to fix indicators - this is recommended (and needed) for dragable color selection (see enabledDragging()).
+     */
+    ColorPicker.fixIndicators = function(slideIndicator, pickerIndicator) {
+
+        pickerIndicator.style.pointerEvents = 'none';
+        slideIndicator.style.pointerEvents = 'none';
+    };
+
+    window.ColorPicker = ColorPicker;
+
+})(window, window.document);
 
 /*
  jCanvas v13.11.21
