@@ -166,7 +166,8 @@
 	z-index: 1000;
 	background: white;
 	border: 1px solid black;
-	padding: 1em;
+/*	padding: 1em; */
+  cursor: grab;
 }
 .small-padding-left {
 	padding-left: 0.5em;
@@ -202,9 +203,6 @@
 	border: 2px solid black;
 	background: white;
 }
-#colour-chart {
-  cursor: grab;
-}
 .boxWrapper {
   cursor: grab;
 }
@@ -230,4 +228,10 @@
 }
 .inverse {
     text-shadow: 0px 0px 5px red;
+}
+#colour-chart-table {
+    margin: 1em;
+}
+.center {
+    text-align: center;
 }
