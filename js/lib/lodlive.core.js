@@ -234,8 +234,9 @@
 
       Array.from(newObj.children()).forEach(function(child) {
         if(child.classList.contains("sprite")) {
-            // TODO by property at the moment - maybe should be be class?
-            child.style.backgroundColor = inst.colourForProperty[propertyName];
+            // TODO default #369 - maybe should be be class?
+            child.style.backgroundColor = "#369";
+            //child.style.backgroundColor = inst.colourForProperty[propertyName];
         }
       });
       inst.context.append(newObj);
