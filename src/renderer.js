@@ -902,38 +902,12 @@ LodLiveRenderer.prototype.drawLines = function(nodes) {
  * @param {Object} [canvas] - jQuery canvas node
  * @param {String} [propertyName] - the predicates from which to build the line label
  */
-LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, uriToLabels) {
+LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, uriToLabels, colours) {
   var renderer = this;
   var pos1 = from.position();
   var pos2 = to.position();
   var fromId = from.attr('id');
   var toId = to.attr('id');
-//  if (canvas == null && document.getElementById('line-' + fromId) !== null) {
-//    return
-//  }
-//  if (!canvas) {
-//    canvas = document.getElementById('line-' + fromId)
-//    if (canvas == null) {
-//      canvas = $('#line-' + fromId);
-//    }
-//  }
-
-//  if (!canvas.length) {
-//    canvas = $('<canvas></canvas>')
-//    .attr('height', renderer.context.height())
-//    .attr('width', renderer.context.width())
-//    .attr('id', 'line-' + fromId)
-//    .css({
-//      position: 'absolute',
-//      top: 0,
-//      left: 0,
-//      zIndex: '0'
-//    });
-//
-//    canvas.data().lines = {};
-//
-//    renderer.context.append(canvas);
-//  }
   if (canvas == null) {
     canvas = renderer.canvas;
   }
@@ -988,18 +962,20 @@ LodLiveRenderer.prototype.drawLine = function(from, to, canvas, propertyName, ur
   var y1 = pos1.top + from.height() / 2;
   var x2 = pos2.left + to.width() / 2;
   var y2 = pos2.top + to.height() / 2;
+  var actualPropertyURIs = canvas.attr('data-propertyName-' + fromId + '-' + toId);
+  var colour = renderer.colourForProperty[actualPropertyURIs];
 
   if (lineStyle === 'isSameAsLine') {
     renderer.isSameAsLine(label, x1, y1, x2, y2, canvas, toId);
   } else {
-    renderer.standardLine(label, x1, y1, x2, y2, canvas, toId);
+    renderer.standardLine(label, x1, y1, x2, y2, canvas, toId, colour);
   }
 };
 
 /**
  *  Draws a line
  */
-LodLiveRenderer.prototype.standardLine = function(label, x1, y1, x2, y2, canvas, toId) {
+LodLiveRenderer.prototype.standardLine = function(label, x1, y1, x2, y2, canvas, toId, colour) {
 
   // eseguo i calcoli e scrivo la riga di connessione tra i cerchi
   var lineangle = (Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI) + 180;
@@ -1009,7 +985,8 @@ LodLiveRenderer.prototype.standardLine = function(label, x1, y1, x2, y2, canvas,
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
-  ctx.strokeStyle = "#fff";
+  ctx.strokeStyle = colour;
+  //ctx.strokeStyle = "#fff";
   ctx.stroke();
   ctx.save();
 

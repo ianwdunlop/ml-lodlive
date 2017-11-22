@@ -1173,12 +1173,34 @@
         me.selectedColourClick.style.background = hex;
         var dp = me.selectedColourClick.getAttribute("data-property");
         me.colourForProperty[dp] = hex;
+        me.renderer.colourForProperty = me.colourForProperty;
         document.querySelectorAll('[data-property="' + dp + '"][class~="relatedBox"]').forEach(function(node) {
             node.style.color = hex;
         });
         document.querySelectorAll('[data-property="' + dp + '"][class~="groupedRelatedBox"]').forEach(function(node) {
             node.style.color = hex;
         });
+        var nodes = [];
+        if (Object.keys(me.renderer.refs.storeIds).length > 0) {
+          Object.keys(me.renderer.refs.storeIds).forEach(function(key) {
+            var refs = me.renderer.refs.storeIds[key];
+            refs.forEach(function(ref) {
+              var contains = false;
+              var newNode = {"from": key.slice(3), "to": ref};
+              nodes.forEach(function(node) {
+                if(!contains && JSON.stringify(node) === JSON.stringify(newNode)) {
+                  contains = true;
+                }
+              });
+              if (!contains) {
+                nodes.push({"from": key.slice(3), "to": ref});
+              }
+            });
+          });
+          me.renderer.clearLines();
+          me.renderer.drawLines(nodes);
+        }
+
 //                        document.getElementById('slider-wrapper').classList.add('invisible');
 //                        document.getElementById('picker-wrapper').classList.add('invisible');
 
@@ -1275,6 +1297,7 @@
       //colourClick.style.backgroundColor = "red";
       var colour = uri === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" ? "black" : "#369";
       me.colourForProperty[uri] = colour;
+      me.renderer.colourForProperty = me.colourForProperty;
       var colourStyle = "background: " +  colour + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;cursor: pointer";
       colourClick.setAttribute("style", colourStyle);
       colourClick.onclick = function() {
