@@ -1142,13 +1142,19 @@
     trow.appendChild(propertyColumn);
     thead.appendChild(trow);
     var tbody = document.createElement('tbody');
-    table.appendChild(thead);
+    //table.appendChild(thead);
     table.appendChild(tbody);
     //div.appendChild(label);
     //div.appendChild(ul);
     var cc = document.getElementById("colour-chart");
+    var title = document.createElement("h4");
+    title.classList.add("center");
+    title.innerHTML = "Property Groups";
+    var div = document.createElement("div");
+    div.appendChild(title);
+    div.appendChild(table);
     if (cc != null) {
-      cc.appendChild(table);
+      cc.appendChild(div);
     }
     // Renderer can update the list when a new uri type gets added
     me.colourChart = tbody;
@@ -1214,9 +1220,9 @@
 
       var tr = document.createElement("tr");
       var pulse = document.createElement("span");
-      pulse.classList.add("glyphicon", "glyphicon-play-circle", "small-padding-left", "show-pulse");
-      pulse.setAttribute("title", "Highlight nodes with this property");
-      pulse.onmouseover = function() {
+      pulse.classList.add("glyphicon", "glyphicon-play-circle", "small-padding-right", "small-padding-left", "show-pulse");
+      pulse.setAttribute("title", "Click to highlight nodes with this property");
+      pulse.onclick = function() {
         document.querySelectorAll('.relatedBox[data-property="' + uri + '"]').forEach(function(node) {
             // Next 3 lines requried to trigger animation again
             node.style.animation = 'none';
