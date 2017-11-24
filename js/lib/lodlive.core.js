@@ -1379,6 +1379,7 @@
     var cc = this.classGroupsTable;
     var me = this;
     newUris.forEach(function(uri) {
+    if (!Object.keys(me.colourForClasses).includes(uri)) {
       var currentUri = uri;
       var allAjaxCalls = [];
       uri.split('|').forEach(function(property) {
@@ -1455,6 +1456,7 @@
       tr.appendChild(linkTd);
       cc.appendChild(tr);
     });
+}
       });
   }
 
