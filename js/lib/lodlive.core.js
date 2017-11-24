@@ -43,6 +43,7 @@
     this.debugOn = options.debugOn && window.console; // don't debug if there is no console
     this.colours = ['salmon', 'crimson', 'red', 'deeppink', 'gold', 'moccasin', 'darkkhaki', 'slateblue', 'lime', 'green', 'aqua', 'midnightblue', 'rosybrown', 'gray', 'tan'];
     this.colourForProperty = {};
+    this.colourForClasses = {};
     // allow them to override the docInfo function
     if (profile.UI.docInfo) {
       this.docInfo = profile.UI.docInfo;
@@ -154,6 +155,7 @@
     this.colourToUris = {};
     this.createColourSelector();
     this.createColourChart();
+    this.createClassGroups();
   };
 
   LodLive.prototype.autoExpand = function() {
@@ -879,8 +881,13 @@
          newUris.push(uri);
       }
     });
+    var classUris = []
+    propertyGroup["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"].forEach(function(uri) {
+      classUris.push(uri);
+    });
     newUris = [...new Set(newUris)];
     inst.renderer.colourForProperty = inst.colourForProperty;
+    inst.addClassGroupToTable(classUris);
     inst.addColourToChart(newUris);
  
     // iterate over connectedDocs and invertedDocs, creating DOM nodes and calculating CSS positioning
@@ -1161,6 +1168,42 @@
     me.colourChart = tbody;
   }
 
+  LodLive.prototype.createClassGroups = function() {
+    var me = this;
+    var table = document.createElement("table");
+    table.id = "class-groups-table";
+    table.classList.add("colour-chart-table");
+//    checkbox.onclick = function() {
+//      me.changeToLozengeView();
+//    };
+    var thead = document.createElement('thead');
+    var trow = document.createElement('tr')
+    var propertyColumn =  document.createElement('th');
+    propertyColumn.appendChild(document.createTextNode('Property'));
+    var colourColumn = document.createElement('th');
+    colourColumn.appendChild(document.createTextNode('Colour'));
+    trow.appendChild(colourColumn);
+    trow.appendChild(propertyColumn);
+    thead.appendChild(trow);
+    var tbody = document.createElement('tbody');
+    //table.appendChild(thead);
+    table.appendChild(tbody);
+    //div.appendChild(label);
+    //div.appendChild(ul);
+    var cc = document.getElementById("colour-chart");
+    var title = document.createElement("h4");
+    title.classList.add("center");
+    title.innerHTML = "Class Groups";
+    var div = document.createElement("div");
+    div.appendChild(title);
+    div.appendChild(table);
+    if (cc != null) {
+      cc.appendChild(div);
+    }
+    // Renderer can update the list when a new uri type gets added
+    me.classGroupsTable = tbody;
+  }
+
   LodLive.prototype.createColourSelector = function() {
     var me = this;
     if (document.getElementById('slider') == null && document.getElementById('picker') == null) {
@@ -1175,12 +1218,24 @@
         var dp = me.selectedColourClick.getAttribute("data-property");
         me.colourForProperty[dp] = hex;
         me.renderer.colourForProperty = me.colourForProperty;
-        document.querySelectorAll('[data-property="' + dp + '"][class~="relatedBox"]').forEach(function(node) {
-            node.style.color = hex;
-        });
-        document.querySelectorAll('[data-property="' + dp + '"][class~="groupedRelatedBox"]').forEach(function(node) {
-            node.style.color = hex;
-        });
+
+        if (!me.selectedColourClick.getAttribute("data-class") === "true") {
+          document.querySelectorAll('[data-property="' + dp + '"][class~="relatedBox"]').forEach(function(node) {
+              node.style.color = hex;
+          });
+          document.querySelectorAll('[data-property="' + dp + '"][class~="groupedRelatedBox"]').forEach(function(node) {
+              node.style.color = hex;
+          });
+        } else {
+          document.querySelectorAll('[data-property="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"][class~="relatedBox"][rel="' + dp + '"]').forEach(function(node) {
+            var selector = ".boxWrapper";
+            do {
+                node = node.parentNode;
+            } while (node && node !== document && !node.matches(selector))
+            var sprite = node.querySelectorAll('[class~="sprite"]')[0];
+            sprite.style.backgroundColor = hex;
+          });
+        }
         var nodes = [];
         if (Object.keys(me.renderer.refs.storeIds).length > 0) {
           Object.keys(me.renderer.refs.storeIds).forEach(function(key) {
@@ -1299,6 +1354,90 @@
       var colour = uri === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" ? "black" : "#369";
       me.colourForProperty[uri] = colour;
       me.renderer.colourForProperty = me.colourForProperty;
+      var colourStyle = "background: " +  colour + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;cursor: pointer";
+      colourClick.setAttribute("style", colourStyle);
+      colourClick.onclick = function() {
+        me.selectedColourClick = this;
+        document.getElementById('colour-picker-complete').classList.remove('invisible');
+      };
+      //me.colourToUris[] = currentUri;
+      colourTd.appendChild(colourClick);
+      var linkTd = document.createElement('td');
+      linkTd.appendChild(pulse);
+      links.forEach(function(link) {
+        linkTd.appendChild(link);
+      });
+      tr.appendChild(colourTd);
+      tr.appendChild(linkTd);
+      cc.appendChild(tr);
+    });
+      });
+  }
+
+
+  LodLive.prototype.addClassGroupToTable = function(newUris) {
+    var cc = this.classGroupsTable;
+    var me = this;
+    newUris.forEach(function(uri) {
+      var currentUri = uri;
+      var allAjaxCalls = [];
+      uri.split('|').forEach(function(property) {
+        var labelKey = property.trim();
+        allAjaxCalls.push(me.generateLabelAjaxCall(labelKey));
+      });
+
+      Promise.all(allAjaxCalls).then(values => {
+
+      var tr = document.createElement("tr");
+      var pulse = document.createElement("span");
+      pulse.classList.add("glyphicon", "glyphicon-play-circle", "small-padding-right", "small-padding-left", "show-pulse");
+      pulse.setAttribute("title", "Click to highlight nodes with this class");
+      pulse.onclick = function() {
+          document.querySelectorAll('[data-property="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"][class~="relatedBox"][rel="' + uri + '"]').forEach(function(node) {
+            var selector = ".boxWrapper";
+            do {
+                node = node.parentNode;
+            } while (node && node !== document && !node.matches(selector))
+            // Next 3 lines requried to trigger animation again
+            node.style.animation = 'none';
+            node.offsetHeight; /* trigger reflow */
+            node.style.animation = null;
+            // Probably already removed due to transition callback - but just in case
+            node.classList.remove("pulser");
+            // If node is hidden then don't animate
+            if(node.style.display != "none" && node.parentElement.style.display != "none") {
+                node.classList.add("pulser");
+                // Remove class after end of animation
+                node.addEventListener(me.whichTransitionEvent(node), function(event) {
+                    event.target.classList.remove('pulser');
+                });
+
+            }
+        });
+      };
+      tr.classList.add("colour-chart-row");
+//    checkbox.onclick = function() {
+//      me.changeToLozengeView();
+//     };
+      var linkTd = document.createElement('td');
+      var colourTd = document.createElement('td');
+      var links = [];
+      uri.split("|").forEach(function(splitUri) {
+        var link = document.createElement("a");
+        link.classList.add("small-padding-left");
+        link.href = splitUri.trim();
+        link.innerHTML = me.uriToLabels[splitUri.trim()];
+        links.push(link);
+      });
+      var colourClick = document.createElement("span");
+      //colourClick.id= "colour-click-" + me.renderer.hashFunc(currentUri);
+      colourClick.setAttribute("data-property", currentUri);
+      colourClick.setAttribute("data-class", true);
+      colourClick.setAttribute("title", "Click to change colour");
+      //colourClick.style.backgroundColor = "red";
+      var colour = uri === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" ? "black" : "#369";
+      me.colourForClasses[uri] = colour;
+      me.renderer.colourForClasses = me.colourForClasses;
       var colourStyle = "background: " +  colour + "; display: inline-block; height: 1em; width: 1em; border: 1px solid blue;cursor: pointer";
       colourClick.setAttribute("style", colourStyle);
       colourClick.onclick = function() {
