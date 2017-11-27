@@ -235,3 +235,11 @@
 .center {
     text-align: center;
 }
+.colour-accordion-group {
+	position: fixed;
+	top: 5em;
+	z-index: 1000;
+  cursor: grab;
+  background-color: white;
+}
+

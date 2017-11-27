@@ -1154,15 +1154,11 @@
     table.appendChild(tbody);
     //div.appendChild(label);
     //div.appendChild(ul);
-    var cc = document.getElementById("colour-chart");
-    var title = document.createElement("h4");
-    title.classList.add("center");
-    title.innerHTML = "Property Groups";
     var div = document.createElement("div");
-    div.appendChild(title);
     div.appendChild(table);
-    if (cc != null) {
-      cc.appendChild(div);
+    var pg = document.getElementById("property-groups");
+    if (pg != null) {
+      pg.appendChild(div);
     }
     // Renderer can update the list when a new uri type gets added
     me.colourChart = tbody;
@@ -1171,7 +1167,7 @@
   LodLive.prototype.createClassGroups = function() {
     var me = this;
     var table = document.createElement("table");
-    table.id = "class-groups-table";
+    table.id = "colour-chart-table";
     table.classList.add("colour-chart-table");
 //    checkbox.onclick = function() {
 //      me.changeToLozengeView();
@@ -1190,15 +1186,11 @@
     table.appendChild(tbody);
     //div.appendChild(label);
     //div.appendChild(ul);
-    var cc = document.getElementById("colour-chart");
-    var title = document.createElement("h4");
-    title.classList.add("center");
-    title.innerHTML = "Class Groups";
     var div = document.createElement("div");
-    div.appendChild(title);
     div.appendChild(table);
-    if (cc != null) {
-      cc.appendChild(div);
+    var cg = document.getElementById("class-groups");
+    if (cg != null) {
+      cg.appendChild(div);
     }
     // Renderer can update the list when a new uri type gets added
     me.classGroupsTable = tbody;
@@ -1219,7 +1211,7 @@
         me.colourForProperty[dp] = hex;
         me.renderer.colourForProperty = me.colourForProperty;
 
-        if (!me.selectedColourClick.getAttribute("data-class") === "true") {
+        if (me.selectedColourClick.getAttribute("data-class") == null || !me.selectedColourClick.getAttribute("data-class") === "true") {
           document.querySelectorAll('[data-property="' + dp + '"][class~="relatedBox"]').forEach(function(node) {
               node.style.color = hex;
           });
